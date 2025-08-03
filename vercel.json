@@ -3,7 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm ci --legacy-peer-deps",
-  "nodeVersion": "18.x",
   "rewrites": [
     {
       "source": "/(.*)",
