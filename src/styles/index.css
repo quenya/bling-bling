@@ -1,0 +1,283 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 커스텀 CSS 변수 */
+:root {
+  --bowling-primary: #1d4ed8;
+  --bowling-secondary: #3b82f6;
+  --bowling-strike: #ff6b35;
+  --bowling-spare: #f7b801;
+  --bowling-gutter: #6c757d;
+  --bowling-pin: #fff3cd;
+  --bowling-lane: #8b4513;
+  --shadow-bowling: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* 기본 스타일 */
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-white text-gray-900 font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  h1 { @apply text-4xl; }
+  h2 { @apply text-3xl; }
+  h3 { @apply text-2xl; }
+  h4 { @apply text-xl; }
+  h5 { @apply text-lg; }
+  h6 { @apply text-base; }
+}
+
+/* 컴포넌트 스타일 */
+@layer components {
+  /* 볼링 점수 표시 */
+  .score-display {
+    @apply font-mono text-2xl font-bold;
+  }
+  
+  .score-strike {
+    @apply text-bowling-strike;
+  }
+  
+  .score-spare {
+    @apply text-bowling-spare;
+  }
+  
+  .score-normal {
+    @apply text-gray-700;
+  }
+
+  /* 카드 스타일 */
+  .card {
+    @apply bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden;
+  }
+  
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-200 bg-gray-50;
+  }
+  
+  .card-body {
+    @apply px-6 py-4;
+  }
+  
+  .card-footer {
+    @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+  }
+
+  /* 버튼 스타일 */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 px-4 py-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-900 hover:bg-gray-200 px-4 py-2;
+  }
+  
+  .btn-outline {
+    @apply border border-gray-300 hover:bg-gray-50 hover:text-gray-900 px-4 py-2;
+  }
+  
+  .btn-ghost {
+    @apply hover:bg-gray-100 hover:text-gray-900 px-4 py-2;
+  }
+
+  /* 입력 필드 */
+  .input {
+    @apply flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* 배지 스타일 */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+  
+  .badge-common {
+    @apply bg-gray-100 text-gray-800;
+  }
+  
+  .badge-rare {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .badge-epic {
+    @apply bg-purple-100 text-purple-800;
+  }
+  
+  .badge-legendary {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  /* 볼링 레인 스타일 */
+  .bowling-lane {
+    @apply bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300 rounded-lg;
+  }
+  
+  .bowling-pin {
+    @apply bg-white border border-gray-300 rounded-full shadow-sm;
+  }
+
+  /* 애니메이션 */
+  .animate-strike {
+    animation: strike 0.6s ease-in-out;
+  }
+  
+  .animate-spare {
+    animation: spare 0.4s ease-in-out;
+  }
+  
+  .animate-score-up {
+    animation: scoreUp 0.8s ease-out;
+  }
+
+  /* 통계 차트 */
+  .chart-container {
+    @apply relative w-full h-64 bg-white rounded-lg p-4 shadow-sm border;
+  }
+  
+  .stat-card {
+    @apply bg-white rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow;
+  }
+  
+  .stat-number {
+    @apply text-2xl font-bold text-gray-900;
+  }
+  
+  .stat-label {
+    @apply text-sm text-gray-600 uppercase tracking-wide;
+  }
+  
+  .stat-change-positive {
+    @apply text-green-600;
+  }
+  
+  .stat-change-negative {
+    @apply text-red-600;
+  }
+
+  /* 로딩 상태 */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600;
+  }
+  
+  .loading-skeleton {
+    @apply animate-pulse bg-gray-300 rounded;
+  }
+
+  /* OCR 관련 */
+  .ocr-preview {
+    @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors;
+  }
+  
+  .ocr-processing {
+    @apply border-blue-500 bg-blue-50;
+  }
+  
+  .ocr-success {
+    @apply border-green-500 bg-green-50;
+  }
+  
+  .ocr-error {
+    @apply border-red-500 bg-red-50;
+  }
+}
+
+/* 유틸리티 클래스 */
+@layer utilities {
+  .text-bowling-strike {
+    color: var(--bowling-strike);
+  }
+  
+  .text-bowling-spare {
+    color: var(--bowling-spare);
+  }
+  
+  .bg-bowling-lane {
+    background-color: var(--bowling-lane);
+  }
+  
+  .shadow-bowling {
+    box-shadow: var(--shadow-bowling);
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 키프레임 애니메이션 */
+@keyframes strike {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spare {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes scoreUp {
+  0% { 
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 222.2% 84% 4.9%;
+    --foreground: 210% 40% 98%;
+  }
+  
+  .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .card-header,
+  .card-footer {
+    @apply bg-gray-700 border-gray-600;
+  }
+}
+
+/* 인쇄 스타일 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  body {
+    color: black !important;
+    background: white !important;
+  }
+}

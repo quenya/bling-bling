@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7-mcp__resolve-library-id",
+      "mcp__context7-mcp__get-library-docs",
+      "mcp__supabase__apply_migration",
+      "Bash(mkdir:*)",
+      "mcp__supabase__list_tables",
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "mcp__supabase__execute_sql",
+      "Bash(rm:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(pkill:*)",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__get_advisors",
+      "Bash(npm run typecheck:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npx:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(npm run build:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(sed:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase",
+    "context7-mcp"
+  ]
+}
