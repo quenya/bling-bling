@@ -1,13 +1,9 @@
 {
+  "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm ci",
-  "framework": "vite",
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
+  "installCommand": "npm ci --legacy-peer-deps",
+  "nodeVersion": "18.x",
   "rewrites": [
     {
       "source": "/(.*)",

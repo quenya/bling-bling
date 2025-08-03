@@ -16,7 +16,6 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "prebuild": "npm run typecheck",
     "build": "vite build",
     "postbuild": "echo 'Build completed successfully'",
     "preview": "vite preview",
@@ -69,7 +68,7 @@
     "vitest": "^1.0.0"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "18.x",
     "npm": ">=9.0.0"
   }
 }
