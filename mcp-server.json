@@ -1,0 +1,11 @@
+{
+  "name": "context7-mcp-server",
+  "command": "node",
+  "args": [
+    "node_modules/@upstash/context7-mcp/dist/index.js"
+  ],
+  "env": {
+    "UPSTASH_REDIS_REST_URL": "",
+    "UPSTASH_REDIS_REST_TOKEN": ""
+  }
+}
