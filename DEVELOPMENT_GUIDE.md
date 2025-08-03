@@ -154,4 +154,29 @@ const getUserInfo = async (userId) => {
 - Context7 검색 결과 공유
 - 학습한 내용 문서화 및 공유
 
+## 7. 배포 가이드 (Vercel)
+
+### Vercel 환경변수 설정
+Vercel 대시보드에서 다음 환경변수를 설정해야 합니다:
+
+```bash
+VITE_SUPABASE_URL=https://vpaomoinssfzlyqzrdfu.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYW9tb2luc3Nmemx5cXpyZGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzOTc0OTMsImV4cCI6MjA2NTk3MzQ5M30.8GaHGvJjgmJizxTRs_LPFaL-ANxzVleuvcM6L5UcNyg
+NODE_ENV=production
+VITE_APP_TITLE=Bling-Bling 볼링 관리 시스템
+VITE_APP_VERSION=1.0.0
+```
+
+### 배포 전 체크리스트
+1. `npm run typecheck` 통과 확인
+2. `npm run lint` 오류 없음 확인
+3. `npm run build` 로컬에서 성공 확인
+4. 환경변수 Vercel에 설정 완료
+5. `.nvmrc` 파일로 Node.js 버전 고정
+
+### 일반적인 배포 오류 해결
+- **Permission denied 오류**: package.json의 빌드 스크립트 확인
+- **Environment variables**: Vercel 대시보드에서 환경변수 설정
+- **Build timeout**: vercel.json에서 빌드 설정 최적화
+
 이 지침서는 프로젝트 진행에 따라 지속적으로 업데이트됩니다.
