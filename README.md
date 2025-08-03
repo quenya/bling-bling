@@ -54,18 +54,37 @@
 ### 설치 및 실행
 ```bash
 # 저장소 클론
-git clone <repository-url>
+git clone https://github.com/quenya/bling-bling.git
 cd bling-bling
 
 # 의존성 설치
 npm install
 
 # 환경변수 설정
-cp .env.example .env.local
-# .env.local에서 Supabase 설정 정보 입력
+cp .env.example .env
+# .env에서 Supabase 설정 정보 입력
 
 # 개발 서버 실행
 npm run dev
+```
+
+## 📦 Vercel 배포
+
+### 자동 배포 (권장)
+1. [Vercel](https://vercel.com)에 GitHub 계정으로 로그인
+2. "New Project" → GitHub에서 `quenya/bling-bling` 선택
+3. 환경 변수 설정:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+4. Deploy 클릭
+
+### CLI 배포
+```bash
+npm i -g vercel
+vercel login
+vercel --prod
 ```
 
 ### 환경변수 설정
