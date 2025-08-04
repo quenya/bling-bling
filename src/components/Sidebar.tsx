@@ -11,12 +11,9 @@ import {
 } from 'lucide-react'
 
 const navigation = [
-  { name: '대시보드', href: '/app', icon: Home, current: true },
-  { name: '점수 입력', href: '/app/input', icon: Edit },
-  { name: '통계 분석', href: '/app/statistics', icon: BarChart3 },
-  { name: '회원 관리', href: '/app/members', icon: Users },
-  { name: '게임 히스토리', href: '/app/history', icon: History },
-  { name: '업적 & 배지', href: '/app/achievements', icon: Trophy },
+  { name: '통계 분석', href: '/', icon: BarChart3, current: true },
+  { name: '점수 입력', href: '/input', icon: Edit },
+  { name: '게임 히스토리', href: '/history', icon: History },
 ]
 
 const quickActions = [
@@ -47,7 +44,7 @@ const Sidebar = () => {
               <NavLink
                 key={item.name}
                 to={item.href}
-                end={item.href === '/app'}
+                end={item.href === '/'}
                 className={({ isActive }) =>
                   `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive

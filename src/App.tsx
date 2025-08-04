@@ -7,12 +7,8 @@ import { ErrorBoundary } from '@/components/ui';
 import { useMultipleRealtime, useRealtimeStatus } from '@/hooks/useRealtime';
 
 // Pages
-import HomePage from './pages/HomePage';
-import DashboardPage from './pages/DashboardPage';
 import ManualInputPage from './pages/ManualInputPage';
 import StatisticsPage from './pages/StatisticsPage';
-import MembersPage from './pages/MembersPage';
-import AchievementsPage from './pages/AchievementsPage';
 import HistoryPage from './pages/HistoryPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -52,16 +48,11 @@ function AppContent() {
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<HomePage />} />
-          
           {/* App routes with layout */}
-          <Route path="/app" element={<Layout />}>
-            <Route index element={<DashboardPage />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<StatisticsPage />} />
             <Route path="input" element={<ManualInputPage />} />
             <Route path="statistics" element={<StatisticsPage />} />
-            <Route path="members" element={<MembersPage />} />
-            <Route path="achievements" element={<AchievementsPage />} />
             <Route path="history" element={<HistoryPage />} />
           </Route>
           
