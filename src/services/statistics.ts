@@ -50,10 +50,56 @@ export interface FunStatistics {
 export const statisticsService = {
   // Get dashboard statistics
   async getDashboardStats(): Promise<DashboardStats> {
-    const response = await supabase
-      .rpc('get_dashboard_statistics')
-    
-    return handleSupabaseResponse(response)
+    try {
+      // 총 게임수 계산 (모든 게임 결과의 개수)
+      const { data: totalGamesData, error: totalGamesError } = await supabase
+        .from('game_results')
+        .select('id', { count: 'exact' })
+      
+      if (totalGamesError) throw totalGamesError
+
+      // 모든 게임의 평균 점수와 최고점
+      const { data: scoresData, error: scoresError } = await supabase
+        .from('game_results')
+        .select('score')
+      
+      if (scoresError) throw scoresError
+
+      // 활성 회원수 (기록이 있는 모든 회원)
+      const { data: membersData, error: membersError } = await supabase
+        .from('game_results')
+        .select('member_id')
+      
+      if (membersError) throw membersError
+
+      const totalGames = totalGamesData?.length || 0
+      const scores = scoresData?.map(d => d.score) || []
+      const averageScore = scores.length > 0 ? 
+        Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 10) / 10 : 0
+      const highestScore = scores.length > 0 ? Math.max(...scores) : 0
+      
+      const uniqueMembers = new Set(membersData?.map(d => d.member_id) || [])
+      const totalMembers = uniqueMembers.size
+
+      return {
+        totalGames,
+        totalMembers,
+        averageScore,
+        highestScore,
+        recentGames: 0, // 사용하지 않음
+        activeMembers: totalMembers // 활성 회원은 총 회원과 동일
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      return {
+        totalGames: 0,
+        totalMembers: 0,
+        averageScore: 0,
+        highestScore: 0,
+        recentGames: 0,
+        activeMembers: 0
+      }
+    }
   },
 
   // Get member statistics with details

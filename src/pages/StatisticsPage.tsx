@@ -30,8 +30,7 @@ const StatisticsPage = () => {
     averageScore: 0,
     highestScore: 0,
     totalMembers: 0,
-    improvementRate: 0,
-    consistency: 0
+    improvementRate: 0
   }
 
   const funStats = [
@@ -123,7 +122,7 @@ const StatisticsPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">총 게임 수</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardLoading ? '-' : overallStats.totalGames}</p>
-                <p className="text-sm text-green-600 mt-1">+{dashboardLoading ? '-' : overallStats.improvementRate || 0}% 증가</p>
+                <p className="text-sm text-gray-500 mt-1">지금까지 진행한 모든 게임</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
                 <BarChart3 className="w-6 h-6 text-blue-600" />
@@ -153,7 +152,7 @@ const StatisticsPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">활성 회원</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardLoading ? '-' : overallStats.totalMembers}</p>
-                <p className="text-sm text-gray-500 mt-1">안정성: {dashboardLoading ? '-' : overallStats.consistency || 0}/10</p>
+                <p className="text-sm text-gray-500 mt-1">기록이 있는 총 회원 수</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
                 <Users className="w-6 h-6 text-purple-600" />
