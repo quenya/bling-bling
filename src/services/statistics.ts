@@ -661,7 +661,7 @@ export const statisticsService = {
         })
         .filter(stat => stat !== null)
         .sort((a, b) => b!.standardDeviation - a!.standardDeviation)
-        .slice(0, 10)
+        .slice(0, 7)
 
       return inconsistencyStats.filter(stat => stat !== null)
 

@@ -15,7 +15,6 @@ import { Button, Badge } from '@/components/ui'
 import { useTop5Players, useLaneTrends, useDashboardStats } from '@/hooks/queries/useStatistics'
 import LaneTrendChart from '@/components/charts/LaneTrendChart'
 import { 
-  ComebackKings, 
   InconsistencyKings, 
   AlmostPerfectStats, 
   LuckyLanes 
@@ -142,13 +141,11 @@ const StatisticsPage = () => {
         <Sparkles className="w-6 h-6 text-purple-600" />
         <div>
           <h2 className="text-2xl font-bold text-gray-900">재미있는 통계</h2>
-          <p className="text-gray-600">회원들이 보면 빵 터질만한 볼링 데이터 분석</p>
         </div>
       </div>
 
       {/* Fun Stats Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ComebackKings />
         <InconsistencyKings />
         <AlmostPerfectStats />
         <LuckyLanes />
@@ -234,31 +231,6 @@ const StatisticsPage = () => {
         </Card>
       </div>
 
-      {/* Achievements Overview */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">업적 현황</h2>
-            <Button variant="outline" size="sm">
-              전체 업적 보기
-            </Button>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {achievements.map((achievement) => (
-              <div key={achievement.name} className="text-center p-4 border border-gray-200 rounded-lg">
-                <Badge variant={achievement.rarity as any} className="mb-2">
-                  {achievement.rarity}
-                </Badge>
-                <h3 className="font-medium text-gray-900 mb-1">{achievement.name}</h3>
-                <p className="text-2xl font-bold text-gray-900 mb-1">{achievement.players}</p>
-                <p className="text-sm text-gray-500">명 달성</p>
-              </div>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
 
     </div>
   )
