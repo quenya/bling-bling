@@ -1,10 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
-  Home, 
   Edit, 
   BarChart3, 
-  Users, 
-  Trophy,
   Target,
   History,
   X
@@ -16,12 +13,9 @@ export interface SidebarProps {
 }
 
 const navigation = [
-  { name: '대시보드', href: '/app', icon: Home, current: true },
   { name: '점수 입력', href: '/app/input', icon: Edit },
   { name: '통계 분석', href: '/app/statistics', icon: BarChart3 },
-  { name: '회원 관리', href: '/app/members', icon: Users },
   { name: '게임 히스토리', href: '/app/history', icon: History },
-  { name: '업적 & 배지', href: '/app/achievements', icon: Trophy },
 ];
 
 const quickActions = [
@@ -37,7 +31,7 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
           <NavLink
             key={item.name}
             to={item.href}
-            end={item.href === '/app'}
+            end={item.href === '/app/statistics'}
             onClick={onItemClick}
             className={({ isActive }) =>
               `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${

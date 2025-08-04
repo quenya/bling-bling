@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import Sidebar from './SidebarNew'
+import Sidebar from './Sidebar'
 import Header from './Header'
 
 const Layout = () => {
