@@ -55,6 +55,7 @@ temp/
 
 # Vite
 .vite/
+node_modules/.vite/
 dist-ssr
 *.local
 
