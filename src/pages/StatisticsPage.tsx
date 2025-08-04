@@ -7,12 +7,19 @@ import {
   Users,
   BarChart3,
   PieChart,
-  LineChart
+  LineChart,
+  Sparkles
 } from 'lucide-react'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Button, Badge } from '@/components/ui'
 import { useTop5Players, useLaneTrends, useDashboardStats } from '@/hooks/queries/useStatistics'
 import LaneTrendChart from '@/components/charts/LaneTrendChart'
+import { 
+  ComebackKings, 
+  InconsistencyKings, 
+  AlmostPerfectStats, 
+  LuckyLanes 
+} from '@/components/stats'
 
 const StatisticsPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month')
@@ -33,39 +40,7 @@ const StatisticsPage = () => {
     improvementRate: 0
   }
 
-  const funStats = [
-    {
-      title: '행운의 요일',
-      value: '-',
-      detail: '데이터 없음',
-      icon: Calendar,
-      color: 'text-blue-600'
-    },
-    {
-      title: '컴백왕',
-      value: '-',
-      detail: '데이터 없음',
-      icon: TrendingUp,
-      color: 'text-green-600'
-    },
-    {
-      title: '안정의 제왕',
-      value: '-',
-      detail: '데이터 없음',
-      icon: Target,
-      color: 'text-purple-600'
-    },
-    {
-      title: '스트라이크 킹',
-      value: '-',
-      detail: '데이터 없음',
-      icon: Trophy,
-      color: 'text-orange-600'
-    }
-  ]
-
   const monthlyTrends: any[] = []
-
   const achievements: any[] = []
 
   return (
@@ -162,26 +137,22 @@ const StatisticsPage = () => {
         </Card>
       </div>
 
-      {/* Fun Stats */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">재미있는 통계</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {funStats.map((stat, index) => (
-              <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className={`w-12 h-12 mx-auto mb-3 bg-white rounded-lg flex items-center justify-center`}>
-                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-                <h3 className="font-medium text-gray-900 mb-1">{stat.title}</h3>
-                <p className="text-lg font-bold text-gray-900 mb-1">{stat.value}</p>
-                <p className="text-sm text-gray-600">{stat.detail}</p>
-              </div>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
+      {/* Fun Stats Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <Sparkles className="w-6 h-6 text-purple-600" />
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">재미있는 통계</h2>
+          <p className="text-gray-600">회원들이 보면 빵 터질만한 볼링 데이터 분석</p>
+        </div>
+      </div>
+
+      {/* Fun Stats Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ComebackKings />
+        <InconsistencyKings />
+        <AlmostPerfectStats />
+        <LuckyLanes />
+      </div>
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

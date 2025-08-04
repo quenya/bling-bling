@@ -508,5 +508,339 @@ export const statisticsService = {
       console.error('Error fetching lane trends:', error)
       return []
     }
+  },
+
+  // ===== 재미있는 통계 4가지 =====
+
+  // 1. 컴백왕 통계 - 역전의 드라마왕 🎭
+  async getComebackKings(): Promise<any[]> {
+    try {
+      const { data: gameResults, error } = await supabase
+        .from('game_results')
+        .select(`
+          member_id,
+          session_id,
+          game_number,
+          score,
+          members!inner(id, name, avatar_url),
+          game_sessions!inner(date, session_name)
+        `)
+        .order('game_sessions.date', { ascending: false })
+
+      if (error) throw error
+
+      // 세션별, 회원별 게임 점수 집계
+      const sessionMemberScores = new Map<string, Map<string, {
+        member: any,
+        scores: number[],
+        session: any
+      }>>()
+
+      gameResults?.forEach(result => {
+        const sessionId = result.session_id
+        const memberId = result.member_id
+        const key = `${sessionId}-${memberId}`
+
+        if (!sessionMemberScores.has(key)) {
+          sessionMemberScores.set(key, new Map())
+        }
+
+        const memberMap = sessionMemberScores.get(key)!
+        if (!memberMap.has(memberId)) {
+          const member = Array.isArray(result.members) ? result.members[0] : result.members
+          const session = Array.isArray(result.game_sessions) ? result.game_sessions[0] : result.game_sessions
+          
+          memberMap.set(memberId, {
+            member,
+            scores: [],
+            session
+          })
+        }
+
+        const data = memberMap.get(memberId)!
+        data.scores[result.game_number - 1] = result.score
+      })
+
+      // 컴백 점수 계산 (1게임 대비 3게임 상승폭)
+      const comebackRecords: any[] = []
+
+      sessionMemberScores.forEach((memberMap) => {
+        memberMap.forEach((data, memberId) => {
+          if (data.scores.length === 3 && data.scores[0] && data.scores[2]) {
+            const improvement = data.scores[2] - data.scores[0]
+            const improvementRate = (improvement / data.scores[0]) * 100
+
+            comebackRecords.push({
+              memberId,
+              memberName: data.member.name,
+              avatarUrl: data.member.avatar_url,
+              sessionDate: data.session.date,
+              sessionName: data.session.session_name,
+              game1Score: data.scores[0],
+              game3Score: data.scores[2],
+              improvement,
+              improvementRate: Math.round(improvementRate * 10) / 10,
+              allScores: data.scores
+            })
+          }
+        })
+      })
+
+      // 상승폭 기준으로 정렬하여 TOP 10 반환
+      return comebackRecords
+        .filter(record => record.improvement > 0) // 상승한 경우만
+        .sort((a, b) => b.improvement - a.improvement)
+        .slice(0, 10)
+
+    } catch (error) {
+      console.error('Error fetching comeback kings:', error)
+      return []
+    }
+  },
+
+  // 2. 일관성 제로왕 - 점수 롤러코스터 🎢
+  async getInconsistencyKings(): Promise<any[]> {
+    try {
+      const { data: gameResults, error } = await supabase
+        .from('game_results')
+        .select(`
+          member_id,
+          score,
+          members!inner(id, name, avatar_url)
+        `)
+
+      if (error) throw error
+
+      // 회원별 점수 집계
+      const memberScores = new Map<string, {
+        member: any,
+        scores: number[]
+      }>()
+
+      gameResults?.forEach(result => {
+        const memberId = result.member_id
+
+        if (!memberScores.has(memberId)) {
+          const member = Array.isArray(result.members) ? result.members[0] : result.members
+          
+          memberScores.set(memberId, {
+            member,
+            scores: []
+          })
+        }
+
+        memberScores.get(memberId)!.scores.push(result.score)
+      })
+
+      // 표준편차 계산
+      const inconsistencyStats = Array.from(memberScores.entries())
+        .map(([memberId, data]) => {
+          const scores = data.scores
+          if (scores.length < 5) return null // 최소 5게임 이상
+
+          const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length
+          const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length
+          const standardDeviation = Math.sqrt(variance)
+
+          const highestScore = Math.max(...scores)
+          const lowestScore = Math.min(...scores)
+          const scoreRange = highestScore - lowestScore
+
+          return {
+            memberId,
+            memberName: data.member.name,
+            avatarUrl: data.member.avatar_url,
+            totalGames: scores.length,
+            averageScore: Math.round(mean * 10) / 10,
+            standardDeviation: Math.round(standardDeviation * 10) / 10,
+            highestScore,
+            lowestScore,
+            scoreRange,
+            unpredictabilityIndex: Math.round((standardDeviation / mean) * 100 * 10) / 10 // CV (변동계수)
+          }
+        })
+        .filter(stat => stat !== null)
+        .sort((a, b) => b!.standardDeviation - a!.standardDeviation)
+        .slice(0, 10)
+
+      return inconsistencyStats.filter(stat => stat !== null)
+
+    } catch (error) {
+      console.error('Error fetching inconsistency kings:', error)
+      return []
+    }
+  },
+
+  // 3. 아차상 - 200점 문턱의 아쉬운 영웅들 😭
+  async getAlmostPerfectStats(): Promise<any> {
+    try {
+      const { data: gameResults, error } = await supabase
+        .from('game_results')
+        .select(`
+          member_id,
+          score,
+          game_number,
+          session_id,
+          members!inner(id, name, avatar_url),
+          game_sessions!inner(date, session_name)
+        `)
+        .gte('score', 150) // 150점 이상만 조회
+        .order('score', { ascending: false })
+
+      if (error) throw error
+
+      // 200점 이상 달성자 (명예의 전당)
+      const perfectScores = gameResults?.filter(result => result.score >= 200) || []
+      
+      // 190-199점 아쉬운 기록들
+      const almostPerfect = gameResults?.filter(result => result.score >= 190 && result.score < 200) || []
+      
+      // 180-189점 거의 다 왔는데 기록들
+      const closeToGreatness = gameResults?.filter(result => result.score >= 180 && result.score < 190) || []
+
+      // 각 카테고리별 TOP 10
+      const formatRecords = (records: any[]) => 
+        records.map(record => {
+          const member = Array.isArray(record.members) ? record.members[0] : record.members
+          const session = Array.isArray(record.game_sessions) ? record.game_sessions[0] : record.game_sessions
+          
+          return {
+            memberId: record.member_id,
+            memberName: member?.name || '알 수 없음',
+            avatarUrl: member?.avatar_url,
+            score: record.score,
+            gameNumber: record.game_number,
+            sessionDate: session?.date || '',
+            sessionName: session?.session_name,
+            gapTo200: 200 - record.score
+          }
+        }).slice(0, 10)
+
+      return {
+        hallOfFame: formatRecords(perfectScores), // 200점 이상 명예의 전당
+        almostThere: formatRecords(almostPerfect), // 190-199점 아쉬운 기록
+        soClose: formatRecords(closeToGreatness), // 180-189점 거의 다 왔는데
+        stats: {
+          perfectCount: perfectScores.length,
+          almostCount: almostPerfect.length,
+          closeCount: closeToGreatness.length,
+          totalHighScores: gameResults?.length || 0
+        }
+      }
+
+    } catch (error) {
+      console.error('Error fetching almost perfect stats:', error)
+      return {
+        hallOfFame: [],
+        almostThere: [],
+        soClose: [],
+        stats: { perfectCount: 0, almostCount: 0, closeCount: 0, totalHighScores: 0 }
+      }
+    }
+  },
+
+  // 4. 행운의 레인 - 레인별 운세 통계 🌟
+  async getLuckyLanes(): Promise<any[]> {
+    try {
+      const { data: gameResults, error } = await supabase
+        .from('game_results')
+        .select(`
+          score,
+          game_number,
+          session_id,
+          member_id,
+          members!inner(name),
+          game_sessions!inner(lane_number, date)
+        `)
+        .not('game_sessions.lane_number', 'is', null)
+
+      if (error) throw error
+
+      // 레인별 통계 집계
+      const laneStats = new Map<number, {
+        laneNumber: number,
+        scores: number[],
+        perfectGames: number[], // 200점 이상
+        members: Set<string>,
+        sessions: Set<string>,
+        bestScore: number,
+        bestScoreMember: string
+      }>()
+
+      gameResults?.forEach(result => {
+        const session = Array.isArray(result.game_sessions) ? result.game_sessions[0] : result.game_sessions
+        const laneNumber = session?.lane_number
+        
+        if (!laneNumber) return // 레인 번호가 없으면 스킵
+        
+        if (!laneStats.has(laneNumber)) {
+          laneStats.set(laneNumber, {
+            laneNumber,
+            scores: [],
+            perfectGames: [],
+            members: new Set(),
+            sessions: new Set(),
+            bestScore: 0,
+            bestScoreMember: ''
+          })
+        }
+
+        const stats = laneStats.get(laneNumber)!
+        stats.scores.push(result.score)
+        stats.members.add(result.member_id)
+        stats.sessions.add(result.session_id)
+
+        if (result.score >= 200) {
+          stats.perfectGames.push(result.score)
+        }
+
+        if (result.score > stats.bestScore) {
+          stats.bestScore = result.score
+          const member = Array.isArray(result.members) ? result.members[0] : result.members
+          stats.bestScoreMember = member?.name || '알 수 없음'
+        }
+      })
+
+      // 레인별 분석 결과 생성
+      const laneAnalysis = Array.from(laneStats.values())
+        .map(stats => {
+          const averageScore = stats.scores.reduce((sum, score) => sum + score, 0) / stats.scores.length
+          const totalGames = stats.scores.length
+          const perfectGameRate = (stats.perfectGames.length / totalGames) * 100
+
+          // 행운 지수 계산 (평균 점수 + 200점 이상 비율 가중치)
+          const luckIndex = averageScore + (perfectGameRate * 2)
+
+          return {
+            laneNumber: stats.laneNumber,
+            averageScore: Math.round(averageScore * 10) / 10,
+            totalGames,
+            perfectGames: stats.perfectGames.length,
+            perfectGameRate: Math.round(perfectGameRate * 10) / 10,
+            uniqueMembers: stats.members.size,
+            uniqueSessions: stats.sessions.size,
+            bestScore: stats.bestScore,
+            bestScoreMember: stats.bestScoreMember,
+            luckIndex: Math.round(luckIndex * 10) / 10,
+            rating: getLaneRating(luckIndex)
+          }
+        })
+        .sort((a, b) => b.luckIndex - a.luckIndex)
+
+      return laneAnalysis
+
+    } catch (error) {
+      console.error('Error fetching lucky lanes:', error)
+      return []
+    }
   }
+}
+
+// 레인 등급 계산 함수
+function getLaneRating(luckIndex: number): string {
+  if (luckIndex >= 160) return '🌟 대박 레인'
+  if (luckIndex >= 150) return '✨ 행운의 레인'
+  if (luckIndex >= 140) return '😊 좋은 레인'
+  if (luckIndex >= 130) return '😐 무난한 레인'
+  return '😅 아쉬운 레인'
 }

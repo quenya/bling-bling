@@ -2,7 +2,7 @@ import { HTMLAttributes, forwardRef } from 'react'
 import { clsx } from 'clsx'
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'common' | 'rare' | 'epic' | 'legendary' | 'success' | 'warning' | 'error'
+  variant?: 'default' | 'common' | 'rare' | 'epic' | 'legendary' | 'success' | 'warning' | 'error' | 'secondary' | 'outline' | 'destructive'
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -16,7 +16,10 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       legendary: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
       success: 'bg-green-100 text-green-800',
       warning: 'bg-orange-100 text-orange-800',
-      error: 'bg-red-100 text-red-800'
+      error: 'bg-red-100 text-red-800',
+      secondary: 'bg-gray-200 text-gray-700',
+      outline: 'bg-white text-gray-700 border border-gray-300',
+      destructive: 'bg-red-100 text-red-800'
     }
 
     const sizes = {
