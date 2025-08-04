@@ -24,12 +24,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "mcp:check": "npx @upstash/context7-mcp --help",
+    "mcp:test": "echo 'Context7 MCP is configured for VS Code. Use Ctrl+Shift+P -> MCP: List Servers to verify.'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
     "@tanstack/react-query": "^5.8.4",
     "@tanstack/react-query-devtools": "^5.84.1",
+    "@upstash/context7-mcp": "^1.0.14",
     "chart.js": "^4.4.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -57,6 +60,7 @@
     "@vitest/coverage-v8": "^1.0.0",
     "@vitest/ui": "^1.0.0",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.0",
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",

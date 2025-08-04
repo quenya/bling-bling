@@ -45,6 +45,12 @@
   - Real-time 기능
   - Edge Functions
 
+### AI & Context Management
+- **Context7 MCP** (Model Context Protocol)
+  - 대화 컨텍스트 관리
+  - Upstash Redis 기반 데이터 저장
+  - AI 어시스턴트 통합
+
 ## 🚀 빠른 시작
 
 ### 사전 요구사항
@@ -67,6 +73,26 @@ cp .env.example .env
 # 개발 서버 실행
 npm run dev
 ```
+
+### Context7 MCP 설정 (VS Code)
+VS Code Copilot Chat에서 최신 라이브러리 문서를 활용하려면:
+
+1. **Upstash Redis 설정**
+   - [Upstash Console](https://console.upstash.com/)에서 Redis 인스턴스 생성
+   - REST API URL과 Token 복사
+
+2. **VS Code에서 MCP 활성화**
+   - `Ctrl+Shift+P` → `MCP: List Servers` 실행
+   - `context7` 서버 확인 및 Redis 정보 입력
+
+3. **사용 방법**
+   - Copilot Chat에서 Agent mode 선택
+   - 프롬프트에 `use context7` 추가
+   ```
+   "How to implement authentication in Next.js 14? use context7"
+   ```
+
+자세한 설정 방법은 [CONTEXT7_GUIDE.md](./CONTEXT7_GUIDE.md)를 참고하세요.
 
 ## 📦 Vercel 배포
 

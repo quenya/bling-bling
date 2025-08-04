@@ -1,146 +1,187 @@
-# Context7 MCP 서버 활용 가이드
+# Context7 MCP 설정 가이드 - Bling-Bling 프로젝트
 
-## Context7 MCP 서버란?
-Context7 MCP 서버는 프로젝트에서 자료 검색과 문서 관리를 위한 전용 서버입니다. 이 가이드는 효과적인 활용 방법을 제시합니다.
+Context7 MCP (Model Context Protocol) 서버가 성공적으로 설치되었습니다!
 
-## 설정 확인
-프로젝트의 `.mcp.json` 파일에서 Context7 설정을 확인할 수 있습니다:
+## 📋 설치된 구성 요소
+
+- **@upstash/context7-mcp**: Context7 MCP 서버 패키지
+- **concurrently**: 개발 서버와 MCP 서버 동시 실행용
+- **VS Code MCP 설정**: `.vscode/mcp.json`
+- **시작 스크립트**: `scripts/start-mcp.js`
+
+## 🔧 설정 방법
+
+### 1. Upstash Redis 인스턴스 생성
+
+Context7 MCP는 Redis를 사용하여 컨텍스트 데이터를 저장합니다.
+
+1. [Upstash Console](https://console.upstash.com/)에 접속
+2. 새 Redis 데이터베이스 생성
+3. REST API 섹션에서 다음 정보 복사:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+
+### 2. VS Code에서 Context7 MCP 사용
+
+VS Code Copilot Chat에서 Context7 MCP를 사용하는 방법:
+
+#### 2.1 MCP 서버 활성화
+1. VS Code에서 `Ctrl+Shift+P` (또는 `Cmd+Shift+P`)를 눌러 Command Palette 열기
+2. `MCP: List Servers` 명령 실행
+3. `context7` 서버가 목록에 있는지 확인
+4. 처음 실행 시 Upstash Redis 정보 입력 프롬프트가 나타남
+
+#### 2.2 Agent Mode에서 사용
+1. `Ctrl+Alt+I` (또는 `Cmd+Alt+I`)로 Copilot Chat 열기
+2. 드롭다운에서 **Agent mode** 선택
+3. **Tools** 버튼 클릭하여 사용 가능한 도구 확인
+4. Context7 도구들이 활성화되어 있는지 확인:
+   - `resolve-library-id`: 라이브러리 이름을 Context7 ID로 변환
+   - `get-library-docs`: 라이브러리 문서 가져오기
+
+#### 2.3 사용 예시
+```
+// 프롬프트 예시 1: 라이브러리 이름으로 검색
+Create a Next.js middleware that checks for a valid JWT in cookies. use context7
+
+// 프롬프트 예시 2: 특정 라이브러리 ID 사용  
+implement basic authentication with supabase. use library /supabase/supabase
+
+// 프롬프트 예시 3: 일반적인 질문
+How do I set up routing in React Router v6? use context7
+```
+
+### 3. 환경 변수 설정 (선택사항)
+
+`.env` 파일에서 다음 값들을 설정할 수도 있습니다:
+
+```bash
+# Context7 MCP - Upstash Redis 설정
+UPSTASH_REDIS_REST_URL=your_actual_redis_url_here
+UPSTASH_REDIS_REST_TOKEN=your_actual_redis_token_here
+```
+## 🚀 사용 방법
+
+### VS Code Copilot Chat에서 사용
+
+Context7 MCP가 설정되면 VS Code Copilot Chat에서 최신 라이브러리 문서를 실시간으로 가져올 수 있습니다.
+
+#### 기본 사용법
+1. **Agent Mode 활성화**: Copilot Chat에서 Agent mode 선택
+2. **Context7 활용**: 프롬프트에 `use context7` 추가
+3. **자동 문서 검색**: Context7이 최신 문서를 자동으로 가져와서 답변에 반영
+
+#### 효과적인 프롬프트 작성
+```bash
+# 일반적인 라이브러리 질문
+"How do I implement file upload with Multer in Express? use context7"
+
+# 특정 라이브러리 버전
+"Show me React 18 new features and Suspense usage. use context7"
+
+# 문제 해결
+"Fix CORS issues in Next.js API routes. use context7"
+
+# 최신 API 사용법
+"How to use the new Supabase JavaScript client v2? use context7"
+```
+
+### MCP 도구 직접 호출
+
+Agent Mode에서 도구를 직접 호출할 수도 있습니다:
+
+- `#resolve-library-id`: 라이브러리 이름을 Context7 ID로 변환
+- `#get-library-docs`: 특정 라이브러리의 문서 가져오기
+
+## 💡 Context7 MCP 기능
+
+### 🔍 실시간 문서 검색
+- **최신 정보**: 실시간으로 업데이트되는 라이브러리 문서
+- **버전별 문서**: 특정 버전의 API 문서 제공
+- **코드 예제**: 실제 작동하는 코드 예제 포함
+
+### 🎯 지원하는 주요 라이브러리
+- **Frontend**: React, Vue, Angular, Next.js, Nuxt.js
+- **Backend**: Node.js, Express, Fastify, NestJS
+- **Database**: MongoDB, PostgreSQL, Supabase, Prisma
+- **Cloud**: AWS, Google Cloud, Azure, Vercel
+- **Tools**: Webpack, Vite, ESLint, Prettier
+
+### ⚡ 성능 최적화
+- **캐싱**: Redis를 통한 빠른 응답
+- **토큰 제한**: 응답 크기 조절 가능
+- **주제 필터링**: 특정 주제에 집중된 문서 검색
+
+## 📚 고급 사용법
+
+### 자동 규칙 설정
+
+`.vscode/settings.json`에 규칙을 추가하여 Context7을 자동으로 호출할 수 있습니다:
 
 ```json
 {
-  "mcpServers": {
-    "context7-mcp": {
-      "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "@smithery/cli@latest",
-        "run",
-        "@upstash/context7-mcp",
-        "--key",
-        "763bbd5b-fdff-4d41-9a67-cc8991ff2611"
-      ]
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "text": "When providing code examples or library documentation, use Context7 to get the most up-to-date information."
     }
-  }
+  ]
 }
 ```
 
-## 활용 시나리오
+### 특정 라이브러리 ID 사용
 
-### 1. 기술 문서 검색
-```
-검색 목적: JavaScript 모범 사례 찾기
-검색 쿼리: "JavaScript best practices 2024"
-활용 방법: 검색 결과를 바탕으로 코딩 가이드라인 수립
-```
+라이브러리 ID를 알고 있다면 더 정확한 검색이 가능합니다:
 
-### 2. 프레임워크 가이드
-```
-검색 목적: React/Vue/Angular 등 프레임워크별 패턴
-검색 쿼리: "React component patterns"
-활용 방법: 컴포넌트 구조 설계 시 참조
+```bash
+"implement authentication with /supabase/supabase library"
+"create middleware with /vercel/next.js routing"
+"set up database with /mongodb/docs connection"
 ```
 
-### 3. 문제 해결
-```
-검색 목적: 특정 에러나 버그 해결 방법
-검색 쿼리: "JavaScript memory leak prevention"
-활용 방법: 성능 최적화 및 버그 수정에 활용
-```
+## 🔧 문제 해결
 
-### 4. API 및 라이브러리 사용법
-```
-검색 목적: 외부 라이브러리 사용법 학습
-검색 쿼리: "axios API integration examples"
-활용 방법: HTTP 클라이언트 구현 시 참조
-```
+### MCP 서버가 시작되지 않는 경우
+1. **VS Code 재시작**: MCP 설정 후 VS Code를 재시작
+2. **권한 확인**: Upstash Redis 인스턴스의 접근 권한 확인
+3. **로그 확인**: `MCP: Show Output` 명령으로 오류 로그 확인
 
-## 검색 전략
+### Context7 도구가 보이지 않는 경우
+1. **Agent Mode 확인**: Copilot Chat이 Agent mode인지 확인
+2. **도구 활성화**: Tools 버튼에서 Context7 도구들이 활성화되어 있는지 확인
+3. **서버 재시작**: `MCP: List Servers`에서 context7 서버 재시작
 
-### 효과적인 검색 키워드 작성
-1. **구체적인 키워드 사용**
-   - 좋은 예: "React useState performance optimization"
-   - 나쁜 예: "React hooks"
+### 응답이 느린 경우
+- **토큰 수 조절**: 필요한 만큼만 토큰 수를 설정
+- **주제 지정**: 특정 주제를 명시하여 검색 범위 축소
+- **캐시 활용**: 같은 질문은 캐시된 결과 사용
 
-2. **기술 스택 명시**
-   - "Node.js Express middleware example"
-   - "JavaScript ES6 async await patterns"
+## 🌟 베스트 프랙티스
 
-3. **연도 또는 버전 포함**
-   - "JavaScript 2024 features"
-   - "React 18 new features"
-
-### 검색 결과 활용법
-1. **관련성 평가**: 프로젝트 요구사항과 얼마나 부합하는지 확인
-2. **신뢰성 검증**: 출처의 신뢰성과 최신성 확인
-3. **적용 가능성**: 현재 기술 스택에 적용 가능한지 판단
-4. **문서화**: 유용한 정보는 팀 지식베이스에 정리
-
-## 검색 결과 문서화 템플릿
-
-### 검색 기록 템플릿
-```markdown
-## 검색 날짜: 2024-01-XX
-### 검색 목적
-- 구체적인 문제나 요구사항 설명
-
-### 검색 키워드
-- "사용한 검색 키워드"
-
-### 주요 발견사항
-1. 핵심 내용 1
-2. 핵심 내용 2
-3. 핵심 내용 3
-
-### 적용 방안
-- 프로젝트에 어떻게 적용할지 계획
-
-### 참고 링크
-- [관련 문서 또는 튜토리얼 링크]
-
-### 팀 공유 여부
-- [ ] 팀 미팅에서 공유 예정
-- [ ] Slack에 공유 완료
-- [ ] 문서에 반영 완료
+### 1. 명확한 질문하기
+```bash
+❌ "How to use React?"
+✅ "How to implement useEffect cleanup in React 18? use context7"
 ```
 
-## 검색 우선순위
+### 2. 라이브러리 버전 명시
+```bash
+❌ "Next.js routing"
+✅ "Next.js 14 App Router file-based routing examples. use context7"
+```
 
-### 1순위: Context7 MCP 서버
-- 모든 기술적 질문은 먼저 Context7에서 검색
-- 충분한 정보를 얻을 때까지 다양한 키워드로 검색
+### 3. 구체적인 문제 상황
+```bash
+❌ "Database error"
+✅ "Fix MongoDB connection timeout in Node.js Express app. use context7"
+```
 
-### 2순위: 공식 문서
-- Context7에서 기본 정보를 얻은 후 공식 문서로 상세 확인
+## 📖 참고 자료
 
-### 3순위: 기타 소스
-- Stack Overflow, GitHub 등은 보완적으로만 활용
+- [Context7 공식 웹사이트](https://context7.com/)
+- [VS Code MCP 서버 문서](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
+- [Model Context Protocol 문서](https://modelcontextprotocol.io/)
+- [Upstash Redis 문서](https://docs.upstash.com/redis)
 
-## 팀 협업을 위한 가이드
+---
 
-### 검색 결과 공유 방법
-1. **즉시 공유**: 중요한 발견사항은 즉시 팀과 공유
-2. **정리 후 공유**: 복잡한 내용은 정리하여 공유
-3. **정기 공유**: 주간 회의에서 검색 결과 종합 공유
-
-### 지식 축적 방법
-1. **개인 노트**: 개인적으로 유용한 검색 결과 정리
-2. **팀 위키**: 팀 전체에 유용한 내용은 위키에 정리
-3. **코드 주석**: 검색 결과를 바탕으로 한 구현에는 관련 주석 추가
-
-## 주의사항
-
-### 보안
-- API 키나 민감한 정보가 포함된 검색은 주의
-- 검색 기록이 팀원들과 공유될 수 있음을 고려
-
-### 저작권
-- 검색 결과를 그대로 복사하지 말고 이해 후 재작성
-- 라이선스가 있는 코드는 라이선스 준수
-
-### 정보의 정확성
-- 검색 결과는 참고용으로만 활용
-- 중요한 결정은 여러 소스를 통해 검증 후 결정
-
-이 가이드를 통해 Context7 MCP 서버를 효과적으로 활용하여 프로젝트의 품질과 개발 효율성을 높이시기 바랍니다.
+이제 VS Code Copilot Chat에서 `use context7`를 추가하여 최신 라이브러리 문서와 함께 더 정확한 코딩 도움을 받을 수 있습니다! 🎉
