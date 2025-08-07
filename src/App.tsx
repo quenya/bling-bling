@@ -10,6 +10,7 @@ import { useMultipleRealtime, useRealtimeStatus } from '@/hooks/useRealtime';
 import ManualInputPage from './pages/ManualInputPage';
 import StatisticsPage from './pages/StatisticsPage';
 import HistoryPage from './pages/HistoryPage';
+import MemberRecordsPage from './pages/MemberRecordsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Layout
@@ -50,10 +51,11 @@ function AppContent() {
         <Routes>
           {/* App routes with layout */}
           <Route path="/" element={<Layout />}>
-            <Route index element={<StatisticsPage />} />
+            <Route index element={<HistoryPage />} />
             <Route path="input" element={<ManualInputPage />} />
             <Route path="statistics" element={<StatisticsPage />} />
             <Route path="history" element={<HistoryPage />} />
+            <Route path="members" element={<MemberRecordsPage />} />
           </Route>
           
           {/* 404 page */}

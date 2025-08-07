@@ -4,6 +4,7 @@ import {
   BarChart3, 
   Target,
   History,
+  User,
   X
 } from 'lucide-react';
 
@@ -13,9 +14,10 @@ export interface SidebarProps {
 }
 
 const navigation = [
-  { name: '점수 입력', href: '/app/input', icon: Edit },
-  { name: '통계 분석', href: '/app/statistics', icon: BarChart3 },
-  { name: '게임 히스토리', href: '/app/history', icon: History },
+  { name: '게임 히스토리', href: '/history', icon: History },
+  { name: '개인별 기록', href: '/members', icon: User },
+  { name: '점수 입력', href: '/input', icon: Edit },
+  { name: '통계 분석', href: '/statistics', icon: BarChart3 },
 ];
 
 const quickActions = [
@@ -31,7 +33,7 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
           <NavLink
             key={item.name}
             to={item.href}
-            end={item.href === '/app/statistics'}
+            end={item.href === '/history'}
             onClick={onItemClick}
             className={({ isActive }) =>
               `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
