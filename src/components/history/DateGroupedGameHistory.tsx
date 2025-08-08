@@ -9,20 +9,32 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
-  Award
+  MapPin,
+  Hash,
+  TrendingUp
 } from 'lucide-react'
 import { Card, CardBody, CardHeader } from '../ui/Card'
+import { useDateGroupedGameHistory } from '../../hooks/queries/useGameHistory'
 import type { DateGroupedSession } from '../../types/bowling'
 
 interface DateGroupedGameHistoryProps {
-  dateGroups: DateGroupedSession[]
+  dateGroups?: DateGroupedSession[]
   loading?: boolean
 }
 
 export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
-  dateGroups,
-  loading
+  dateGroups: propDateGroups,
+  loading: propLoading
 }) => {
+  // 직접 데이터를 가져오되, props로 전달된 경우 우선 사용
+  const { 
+    data: fetchedDateGroups = [], 
+    isLoading: fetchLoading 
+  } = useDateGroupedGameHistory({ limit: 1000 })
+
+  const dateGroups = propDateGroups || fetchedDateGroups
+  const loading = propLoading !== undefined ? propLoading : fetchLoading
+
   const [expandedDates, setExpandedDates] = React.useState<Set<string>>(new Set())
 
   const toggleDateExpansion = (date: string) => {
@@ -122,101 +134,114 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
             {isExpanded && (
               <CardBody className="border-t border-gray-200">
                 <div className="grid gap-6">
-                  {/* 레인별 팀 순위 */}
-                  {dateGroup.dateStats.teamStats && dateGroup.dateStats.teamStats.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <Award className="w-4 h-4 text-yellow-500" />
-                        레인별 팀 순위 ({dateGroup.dateStats.teamStats.length}개 레인)
-                      </h4>
-                      <div className="grid gap-3">
-                        {dateGroup.dateStats.teamStats
-                          .sort((a, b) => b.teamAverage - a.teamAverage)
-                          .map((team, index) => (
-                          <div 
-                            key={`${team.teamName}-${index}`}
-                            className={`p-4 rounded-lg border ${
-                              index === 0 ? 'bg-yellow-50 border-yellow-300 shadow-md' :
-                              index === 1 ? 'bg-gray-50 border-gray-300' :
-                              index === 2 ? 'bg-orange-50 border-orange-300' :
-                              'bg-white border-gray-200'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-3">
+                  {/* 세션별 상세 정보 */}
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-blue-500" />
+                      세션별 상세 정보 ({dateGroup.sessions.length}개 세션)
+                    </h4>
+                    <div className="grid gap-4">
+                      {dateGroup.sessions
+                        .sort((a, b) => {
+                          const avgA = a.results.reduce((sum, r) => sum + r.average, 0) / a.results.length
+                          const avgB = b.results.reduce((sum, r) => sum + r.average, 0) / b.results.length
+                          return avgB - avgA // 레인별 평균점수 내림차순 정렬
+                        })
+                        .map((session, sessionIndex) => {
+                        const sessionAverage = session.results.reduce((sum, r) => sum + r.average, 0) / session.results.length
+                        const sessionHighest = Math.max(...session.results.flatMap(r => r.scores))
+                        
+                        return (
+                          <div key={session.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                            <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                  index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                  index === 1 ? 'bg-gray-400 text-gray-900' :
-                                  index === 2 ? 'bg-orange-400 text-orange-900' :
-                                  'bg-blue-400 text-blue-900'
-                                }`}>
-                                  {index + 1}
+                                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                                  <Hash className="w-3 h-3" />
+                                  레인 {session.laneNumber || sessionIndex + 1}
                                 </div>
-                                <div>
-                                  <div className="font-semibold text-gray-900">
-                                    {team.teamName}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {team.members.length}명 참여 • {team.sessionCount || 1}세션
-                                  </div>
-                                  <div className="text-sm font-bold text-blue-600">
-                                    팀 평균: {team.teamAverage.toFixed(1)}점
-                                  </div>
-                                </div>
+                                {session.sessionName && (
+                                  <span className="text-gray-700 font-medium">{session.sessionName}</span>
+                                )}
+                                {session.location && (
+                                  <span className="flex items-center gap-1 text-gray-500 text-sm">
+                                    <MapPin className="w-3 h-3" />
+                                    {session.location}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-right">
-                                <div className="text-lg font-bold text-gray-900">
-                                  평균 {team.teamAverage.toFixed(1)}점
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                  총 {team.totalGames}게임
+                                <div className="text-sm text-gray-500">레인 평균</div>
+                                <div className="font-semibold text-blue-600 flex items-center gap-1">
+                                  <TrendingUp className="w-4 h-4" />
+                                  {sessionAverage.toFixed(1)}점
                                 </div>
                               </div>
                             </div>
                             
-                            {/* 레인 참가자 목록 */}
-                            <div>
-                              <div className="text-sm font-medium text-gray-700 mb-2">참가자</div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                                {team.members.map((member, memberIndex) => {
-                                  const diffFromTeamAvg = member.average - team.teamAverage
-                                  return (
-                                    <div 
-                                      key={`${member.id}-${memberIndex}`}
-                                      className="px-2 py-1 bg-white rounded border border-gray-200"
-                                    >
-                                      <div className="font-medium text-gray-900 text-xs">
-                                        {member.name}
-                                      </div>
-                                      <div className="text-xs text-gray-600">
-                                        {member.average.toFixed(1)}점
-                                      </div>
-                                      <div className={`text-xs ${
-                                        diffFromTeamAvg > 0 ? 'text-green-600' : 
-                                        diffFromTeamAvg < 0 ? 'text-red-600' : 'text-gray-500'
+                            {/* 해당 세션의 모든 참가자 점수 */}
+                            <div className="space-y-3">
+                              <h5 className="font-medium text-gray-800 flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                참가자 ({session.results.length}명)
+                              </h5>
+                              <div className="grid gap-3">
+                                {session.results
+                                  .sort((a, b) => b.average - a.average) // 평균 점수 순으로 정렬
+                                  .map((result, resultIndex) => (
+                                  <div key={result.member.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                                    resultIndex === 0 ? 'bg-yellow-50 border border-yellow-200' :
+                                    resultIndex === 1 ? 'bg-gray-50 border border-gray-200' :
+                                    resultIndex === 2 ? 'bg-orange-50 border border-orange-200' :
+                                    'bg-gray-50 border border-gray-100'
+                                  }`}>
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                        resultIndex === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                        resultIndex === 1 ? 'bg-gray-400 text-gray-900' :
+                                        resultIndex === 2 ? 'bg-orange-400 text-orange-900' :
+                                        'bg-blue-100 text-blue-800'
                                       }`}>
-                                        {diffFromTeamAvg > 0 ? '+' : ''}{diffFromTeamAvg.toFixed(1)}
+                                        {resultIndex + 1}
+                                      </div>
+                                      <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                                        {result.member.name.charAt(0)}
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-gray-900">{result.member.name}</div>
+                                        <div className="text-sm text-gray-600">
+                                          게임별 점수: {result.scores.join(', ')}점
+                                        </div>
                                       </div>
                                     </div>
-                                  )
-                                })}
+                                    <div className="text-right">
+                                      <div className="font-semibold text-gray-900 text-lg">{result.average.toFixed(1)}점</div>
+                                      <div className="text-sm text-gray-500">평균</div>
+                                      {Math.max(...result.scores) === sessionHighest && (
+                                        <div className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                                          <Star className="w-3 h-3" />
+                                          최고점수
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
 
                   {/* 전체 게임 결과 */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <Star className="w-4 h-4 text-blue-500" />
-                      전체 게임 결과 ({dateGroup.sessions.length}개 세션)
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                      이날의 전체 순위
                     </h4>
                     
                     {/* 모든 세션의 결과를 하나로 합쳐서 표시 */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                       {(() => {
                         // 모든 세션의 결과를 합치고 멤버별로 그룹화
                         const allResults = dateGroup.sessions.flatMap(session => session.results)
@@ -226,6 +251,7 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                           totalGames: number
                           average: number
                           sessions: string[]
+                          sessionDetails: Array<{sessionName: string, laneNumber?: number, scores: number[], average: number}>
                         }>()
 
                         // 멤버별 데이터 집계
@@ -237,7 +263,8 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                               allScores: [],
                               totalGames: 0,
                               average: 0,
-                              sessions: []
+                              sessions: [],
+                              sessionDetails: []
                             })
                           }
                           
@@ -245,13 +272,22 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                           memberData.allScores.push(...result.scores)
                           memberData.totalGames += result.scores.length
                           
-                          // 세션 이름 추가 (중복 방지)
-                          const sessionName = dateGroup.sessions.find(s => 
-                            s.results.some(r => r.member.id === memberId)
-                          )?.sessionName || '세션'
+                          // 세션 정보 추가
+                          const session = dateGroup.sessions.find(s => 
+                            s.results.some(r => r.member.id === memberId && r.scores === result.scores)
+                          )
+                          
+                          const sessionName = session?.sessionName || '세션'
                           if (!memberData.sessions.includes(sessionName)) {
                             memberData.sessions.push(sessionName)
                           }
+                          
+                          memberData.sessionDetails.push({
+                            sessionName: sessionName,
+                            laneNumber: session?.laneNumber,
+                            scores: result.scores,
+                            average: result.average
+                          })
                         })
 
                         // 평균 계산 및 정렬
@@ -263,32 +299,32 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                           .sort((a, b) => b.average - a.average)
 
                         return (
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             {/* 헤더 */}
                             <div className="flex items-center justify-between mb-4">
                               <div className="text-lg font-semibold text-gray-900">
-                                이날의 전체 순위
+                                🏆 종합 순위 (상위 3위)
                               </div>
                               <div className="text-sm text-gray-600">
-                                총 {sortedResults.length}명 참여
+                                총 {sortedResults.length}명 참여 • 전체 평균 {dateGroup.dateStats.averageScore.toFixed(1)}점
                               </div>
                             </div>
 
                             {/* 순위 목록 */}
-                            <div className="grid gap-3">
-                              {sortedResults.map((memberData, index) => (
+                            <div className="space-y-3">
+                              {sortedResults.slice(0, 3).map((memberData, index) => (
                                 <div 
                                   key={memberData.member.id}
-                                  className={`p-4 rounded-lg border ${
-                                    index === 0 ? 'bg-yellow-50 border-yellow-300 shadow-md' :
-                                    index === 1 ? 'bg-gray-50 border-gray-300' :
-                                    index === 2 ? 'bg-orange-50 border-orange-300' :
-                                    'bg-white border-gray-200'
+                                  className={`p-4 rounded-lg border-2 ${
+                                    index === 0 ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-400 shadow-lg' :
+                                    index === 1 ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-400 shadow-md' :
+                                    index === 2 ? 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-400 shadow-md' :
+                                    'bg-white border-gray-200 shadow-sm'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-4">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
                                         index === 0 ? 'bg-yellow-400 text-yellow-900' :
                                         index === 1 ? 'bg-gray-400 text-gray-900' :
                                         index === 2 ? 'bg-orange-400 text-orange-900' :
@@ -297,51 +333,50 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                                         {index + 1}
                                       </div>
                                       <div>
-                                        <div className="font-semibold text-gray-900">
+                                        <div className="text-xl font-bold text-gray-900">
                                           {memberData.member.name}
+                                          {index === 0 && <span className="ml-2 text-yellow-600">👑</span>}
                                         </div>
                                         <div className="text-sm text-gray-600">
-                                          {memberData.sessions.join(', ')} 참여
+                                          참여 세션: {memberData.sessions.join(', ')}
                                         </div>
                                       </div>
                                     </div>
                                     <div className="text-right">
-                                      <div className="text-lg font-bold text-gray-900">
-                                        평균 {memberData.average.toFixed(1)}점
+                                      <div className="text-2xl font-bold text-gray-900">
+                                        {memberData.average.toFixed(1)}점
                                       </div>
                                       <div className="text-sm text-gray-600">
-                                        {memberData.totalGames}게임
+                                        총 {memberData.totalGames}게임 평균
                                       </div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        개별 점수: {memberData.allScores.join(', ')}
-                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 세션별 상세 점수 */}
+                                  <div className="mt-3 pt-3 border-t border-gray-200">
+                                    <div className="grid gap-2">
+                                      {memberData.sessionDetails.map((detail, detailIndex) => (
+                                        <div key={detailIndex} className="flex items-center justify-between text-sm">
+                                          <div className="flex items-center gap-2">
+                                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                              레인 {detail.laneNumber || '?'}
+                                            </span>
+                                            <span className="text-gray-600">{detail.sessionName}</span>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="font-medium text-gray-900">
+                                              평균 {detail.average.toFixed(1)}점
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              게임별: {detail.scores.join(', ')}점
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
                                   </div>
                                 </div>
                               ))}
-                            </div>
-
-                            {/* 세션별 요약 */}
-                            <div className="mt-6 pt-4 border-t border-gray-200">
-                              <h5 className="font-medium text-gray-900 mb-3">세션별 요약</h5>
-                              <div className="grid gap-2">
-                                {dateGroup.sessions.map((session) => {
-                                  const sessionAverage = session.results.reduce((sum, r) => sum + r.average, 0) / session.results.length
-                                  return (
-                                    <div key={session.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                                      <div className="text-sm">
-                                        <span className="font-medium">{session.sessionName || '세션'}</span>
-                                        {session.location && <span className="text-gray-600"> • {session.location}</span>}
-                                        {session.laneNumber && <span className="text-gray-600"> • {session.laneNumber}레인</span>}
-                                      </div>
-                                      <div className="text-sm">
-                                        <span className="font-medium text-gray-900">평균 {sessionAverage.toFixed(1)}점</span>
-                                        <span className="text-gray-600 ml-2">({session.totalParticipants}명)</span>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
                             </div>
                           </div>
                         )

@@ -8,7 +8,7 @@ const HistoryPage: React.FC = () => {
     data: sessions = [], 
     isLoading: sessionsLoading, 
     error: sessionsError 
-  } = useGameHistory({ limit: 50 })
+  } = useGameHistory({ limit: 1000 }) // 충분히 큰 값으로 설정
   
   const { 
     data: highlights, 

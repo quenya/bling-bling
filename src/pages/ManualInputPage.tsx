@@ -131,7 +131,7 @@ const ManualInputPage = () => {
           session = await createSession.mutateAsync({
             session_name: `${data.date.replace(/-/g, '.')} 레인${data.laneNumber}번`,
             date: data.date,
-            location: '볼링장',
+            location: '라인볼링장',
             lane_number: data.laneNumber,
             total_participants: data.members.filter(m => m.name.trim()).length
           })

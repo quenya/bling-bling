@@ -1,12 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Search,
   TrendingUp,
   TrendingDown,
-  Target,
   Calendar,
-  Medal,
   User as UserIcon,
   BarChart3
 } from 'lucide-react';
@@ -163,9 +161,8 @@ const fetchMemberGameResults = async (memberId: string): Promise<GameResult[]> =
       )
     `)
     .eq('member_id', memberId)
-    .order('created_at', { ascending: false })
-    .limit(20);
-  
+    .order('created_at', { ascending: false });
+
   if (error) throw error;
   
   // 날짜별로 그룹화한 후 같은 날짜 내에서 게임 번호 역순(3,2,1) 정렬
@@ -183,9 +180,7 @@ const fetchMemberGameResults = async (memberId: string): Promise<GameResult[]> =
   });
   
   return results;
-};
-
-function MemberRecordsPage() {
+};function MemberRecordsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
@@ -213,43 +208,6 @@ function MemberRecordsPage() {
     }));
   }, [members, statistics]);
 
-  // 실제 통계 계산 (가중평균으로 정확한 전체 평균 계산)
-  const actualStatistics = useMemo(() => {
-    if (statistics.length === 0) return {
-      averageScore: 0,
-      highestScore: 0,
-      totalActiveMembers: members.filter(m => m.is_active).length
-    };
-    
-    const activeStats = statistics.filter(stat => 
-      members.some(m => m.id === stat.member_id && m.is_active)
-    );
-    
-    if (activeStats.length === 0) return {
-      averageScore: 0,
-      highestScore: 0,
-      totalActiveMembers: members.filter(m => m.is_active).length
-    };
-    
-    // 가중평균 계산: 각 회원의 (평균점수 * 게임수)의 합 / 전체 게임수
-    const totalWeightedScore = activeStats.reduce((sum, stat) => {
-      return sum + (stat.average_score * stat.total_games);
-    }, 0);
-    
-    const totalGames = activeStats.reduce((sum, stat) => sum + stat.total_games, 0);
-    const weightedAverage = totalGames > 0 ? totalWeightedScore / totalGames : 0;
-    
-    const highestScore = activeStats.length > 0 
-      ? Math.max(...activeStats.map(stat => stat.highest_score))
-      : 0;
-    
-    return {
-      averageScore: Math.round(weightedAverage),
-      highestScore: highestScore,
-      totalActiveMembers: activeStats.length
-    };
-  }, [statistics, members]);
-
   const filteredMembers = useMemo(() => {
     return membersWithStats.filter(member =>
       member.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -260,7 +218,7 @@ function MemberRecordsPage() {
     return filteredMembers.find(member => member.id === selectedMemberId);
   }, [filteredMembers, selectedMemberId]);
 
-  // 선택된 회원의 날짜별 평균점수 차트 데이터 준비
+  // 선택된 회원의 날짜별 평균점수 차트 데이터 준비 (최근 10개 날짜)
   const chartData = useMemo(() => {
     if (!memberGameResults.length) return [];
     
@@ -279,23 +237,24 @@ function MemberRecordsPage() {
       .map(([date, results]) => {
         const totalScore = results.reduce((sum, r) => sum + r.score, 0);
         const averageScore = Math.round(totalScore / results.length);
-        const totalStrikes = results.reduce((sum, r) => sum + (r.strikes || 0), 0);
-        const totalSpares = results.reduce((sum, r) => sum + (r.spares || 0), 0);
         
         return {
           date: date,
           score: averageScore,
           gameCount: results.length,
-          totalStrikes,
-          totalSpares,
           formattedDate: new Date(date).toLocaleDateString('ko-KR', { 
             month: 'short', 
             day: 'numeric' 
+          }),
+          fullDate: new Date(date).toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
           })
         };
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-10);
+      .slice(-10); // 최근 10개 날짜만
     
     return dateAverages;
   }, [memberGameResults]);
@@ -348,55 +307,6 @@ function MemberRecordsPage() {
         </div>
       </div>
 
-      {/* 통계 요약 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center">
-            <UserIcon className="h-8 w-8 text-blue-500" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">총 회원</p>
-              <p className="text-2xl font-semibold text-gray-900">{members.length}명</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center">
-            <Target className="h-8 w-8 text-green-500" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">평균 점수</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {actualStatistics.averageScore}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center">
-            <Medal className="h-8 w-8 text-yellow-500" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">최고 점수</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {actualStatistics.highestScore}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-center">
-            <Calendar className="h-8 w-8 text-purple-500" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">활성 회원</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {actualStatistics.totalActiveMembers}명
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 회원 목록 */}
         <div className="lg:col-span-1">
@@ -427,9 +337,9 @@ function MemberRecordsPage() {
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center space-x-2">
-                          {member.statistics?.total_games && (
+                          {member.statistics?.total_sessions && (
                             <span className="text-sm text-gray-400">
-                              {member.statistics.total_games}게임
+                              {member.statistics.total_sessions}일 ({member.statistics.total_games}게임)
                             </span>
                           )}
                           {member.statistics?.improvement_rate !== undefined && (
@@ -494,12 +404,12 @@ function MemberRecordsPage() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">기본 통계</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">총 게임</span>
-                        <span className="font-semibold">{formatNumber(selectedMember.statistics.total_games)}</span>
+                        <span className="text-gray-600">총 게임 일자</span>
+                        <span className="font-semibold">{formatNumber(selectedMember.statistics.total_sessions)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">총 세션</span>
-                        <span className="font-semibold">{formatNumber(selectedMember.statistics.total_sessions)}</span>
+                        <span className="text-gray-600">총 게임수</span>
+                        <span className="font-semibold">{formatNumber(selectedMember.statistics.total_games)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">평균 점수</span>
@@ -562,20 +472,16 @@ function MemberRecordsPage() {
                             stroke="#666"
                           />
                           <Tooltip
-                            content={({ active, payload, label }) => {
+                            content={({ active, payload }) => {
                               if (active && payload && payload.length) {
                                 const data = payload[0].payload;
                                 return (
                                   <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                                    <p className="font-semibold text-gray-900">{label}</p>
+                                    <p className="font-semibold text-gray-900">{data.fullDate}</p>
                                     <p className="text-blue-600">
                                       평균점수: <span className="font-bold">{data.score}</span>
                                     </p>
                                     <p className="text-sm text-gray-500">{data.gameCount}게임</p>
-                                    <div className="flex space-x-2 text-xs text-gray-400 mt-1">
-                                      <span>🎯 {data.totalStrikes}</span>
-                                      <span>📍 {data.totalSpares}</span>
-                                    </div>
                                   </div>
                                 );
                               }
@@ -605,10 +511,10 @@ function MemberRecordsPage() {
                 </div>
               )}
 
-              {/* 최근 게임 기록 */}
+              {/* 전체 게임 기록 - 날짜별 그룹화 */}
               <div className="bg-white rounded-lg shadow">
                 <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold text-gray-900">최근 게임 기록</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">전체 게임 기록</h3>
                 </div>
                 {gameResultsLoading ? (
                   <div className="p-6">
@@ -619,31 +525,67 @@ function MemberRecordsPage() {
                     </div>
                   </div>
                 ) : memberGameResults.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">게임</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">점수</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {memberGameResults.map((result) => (
-                          <tr key={result.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-sm text-gray-900">
-                              {formatDate(result.game_sessions.date)}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-900">
-                              {result.game_number}게임
-                            </td>
-                            <td className="px-4 py-2 text-sm font-semibold text-gray-900 text-right">
-                              {result.score}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="p-4 space-y-4">
+                    {(() => {
+                      // 날짜별로 그룹화
+                      const groupedByDate = memberGameResults.reduce((acc, result) => {
+                        const date = (result.game_sessions as any).date;
+                        if (!acc[date]) {
+                          acc[date] = [];
+                        }
+                        acc[date].push(result);
+                        return acc;
+                      }, {} as Record<string, GameResult[]>);
+
+                      // 날짜 순으로 정렬 (최신 날짜부터)
+                      const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
+                        new Date(b).getTime() - new Date(a).getTime()
+                      );
+
+                      return sortedDates.map((date) => {
+                        const games = groupedByDate[date].sort((a, b) => a.game_number - b.game_number);
+                        const totalScore = games.reduce((sum, game) => sum + game.score, 0);
+                        const averageScore = Math.round(totalScore / games.length);
+
+                        return (
+                          <div key={date} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="h-4 w-4 text-gray-500" />
+                                <span className="font-medium text-gray-900">{formatDate(date)}</span>
+                                <span className="text-sm text-gray-500">
+                                  ({games[0].game_sessions.location || '알 수 없음'})
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm text-gray-500">평균</div>
+                                <div className="text-lg font-bold text-blue-600">{averageScore}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                              {games.map((game) => (
+                                <div key={game.id} className="bg-gray-50 rounded-lg p-3 text-center">
+                                  <div className="text-xs text-gray-500 mb-1">{game.game_number}게임</div>
+                                  <div className="text-xl font-bold text-gray-900">{game.score}</div>
+                                </div>
+                              ))}
+                              
+                              {/* 3게임보다 적으면 빈 슬롯 표시 */}
+                              {games.length < 3 && (
+                                [...Array(3 - games.length)].map((_, emptyIndex) => (
+                                  <div key={`empty-${emptyIndex}`} className="bg-gray-100 rounded-lg p-3 text-center border-2 border-dashed border-gray-300">
+                                    <div className="text-xs text-gray-400 mb-1">{games.length + emptyIndex + 1}게임</div>
+                                    <div className="text-xl font-bold text-gray-400">-</div>
+                                    <div className="text-xs text-gray-400 mt-1">미플레이</div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 ) : (
                   <div className="p-6">

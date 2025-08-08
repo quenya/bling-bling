@@ -16,8 +16,8 @@ export interface SidebarProps {
 const navigation = [
   { name: '게임 히스토리', href: '/history', icon: History },
   { name: '개인별 기록', href: '/members', icon: User },
-  { name: '점수 입력', href: '/input', icon: Edit },
   { name: '통계 분석', href: '/statistics', icon: BarChart3 },
+  { name: '점수 입력', href: '/input', icon: Edit },
 ];
 
 const quickActions = [

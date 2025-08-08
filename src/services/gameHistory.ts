@@ -15,7 +15,7 @@ export const getGameHistory = async (options?: {
   dateTo?: string
 }) => {
   try {
-    const { limit = 20, offset = 0, dateFrom, dateTo } = options || {}
+    const { limit = 1000, offset = 0, dateFrom, dateTo } = options || {}
 
     let query = supabase
       .from('game_sessions')

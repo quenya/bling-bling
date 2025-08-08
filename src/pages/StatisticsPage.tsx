@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import { 
   TrendingUp, 
   Trophy, 
@@ -21,9 +20,6 @@ import {
 } from '@/components/stats'
 
 const StatisticsPage = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month')
-  const [selectedView, setSelectedView] = useState('overview')
-
   // 데이터 쿼리
   const { data: dashboardStats, isLoading: dashboardLoading } = useDashboardStats()
   const { data: topPerformers = [], isLoading: topPlayersLoading } = useTop5Players()
@@ -33,8 +29,12 @@ const StatisticsPage = () => {
   // 전체 통계 데이터 (대시보드 통계 활용)
   const overallStats = dashboardStats || {
     totalGames: 0,
+    totalGameDays: 0,
     averageScore: 0,
     highestScore: 0,
+    highestScoreMemberName: '',
+    highestScoreDate: '',
+    highestScoreGameNumber: 0,
     totalMembers: 0,
     improvementRate: 0
   }
@@ -50,42 +50,6 @@ const StatisticsPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">통계 분석</h1>
           <p className="text-gray-600 mt-1">동호회 볼링 현황과 트렌드를 분석합니다</p>
         </div>
-        
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <select 
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="week">이번 주</option>
-            <option value="month">이번 달</option>
-            <option value="quarter">분기</option>
-            <option value="year">올해</option>
-          </select>
-          
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setSelectedView('overview')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                selectedView === 'overview' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              개요
-            </button>
-            <button
-              onClick={() => setSelectedView('detailed')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                selectedView === 'detailed' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              상세
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Overall Stats */}
@@ -94,9 +58,9 @@ const StatisticsPage = () => {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">총 게임 수</p>
-                <p className="text-3xl font-bold text-gray-900">{dashboardLoading ? '-' : overallStats.totalGames}</p>
-                <p className="text-sm text-gray-500 mt-1">지금까지 진행한 모든 게임</p>
+                <p className="text-sm font-medium text-gray-600">총 게임 일자</p>
+                <p className="text-3xl font-bold text-gray-900">{dashboardLoading ? '-' : overallStats.totalGameDays}</p>
+                <p className="text-sm text-gray-500 mt-1">총 게임수: {dashboardLoading ? '-' : overallStats.totalGames}회</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
                 <BarChart3 className="w-6 h-6 text-blue-600" />
@@ -111,7 +75,15 @@ const StatisticsPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">평균 점수</p>
                 <p className="text-3xl font-bold text-gray-900">{dashboardLoading ? '-' : overallStats.averageScore}</p>
-                <p className="text-sm text-gray-500 mt-1">최고: {dashboardLoading ? '-' : overallStats.highestScore}점</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  최고: {dashboardLoading ? '-' : overallStats.highestScore}점
+                  {overallStats.highestScoreMemberName && ` (${overallStats.highestScoreMemberName})`}
+                </p>
+                {overallStats.highestScoreDate && overallStats.highestScoreGameNumber && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(overallStats.highestScoreDate).toLocaleDateString('ko-KR')} • {overallStats.highestScoreGameNumber}게임
+                  </p>
+                )}
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
                 <Target className="w-6 h-6 text-green-600" />

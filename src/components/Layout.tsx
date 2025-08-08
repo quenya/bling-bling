@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
-import Header from './Header'
 
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -22,9 +22,16 @@ const Layout = () => {
         onMobileMenuClose={handleMobileMenuClose}
       />
       
+      {/* Mobile menu button */}
+      <button
+        onClick={handleMobileMenuToggle}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+      
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMobileMenuToggle={handleMobileMenuToggle} />
         <main className="flex-1 overflow-y-auto">
           <div className="container mx-auto px-4 md:px-6 py-8">
             <Outlet />

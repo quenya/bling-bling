@@ -2,9 +2,13 @@ import { supabase, handleSupabaseResponse } from './supabase'
 
 export interface DashboardStats {
   totalGames: number
+  totalGameDays: number
   totalMembers: number
   averageScore: number
   highestScore: number
+  highestScoreMemberName?: string
+  highestScoreDate?: string
+  highestScoreGameNumber?: number
   recentGames: number
   activeMembers: number
 }
@@ -58,10 +62,15 @@ export const statisticsService = {
       
       if (totalGamesError) throw totalGamesError
 
-      // 모든 게임의 평균 점수와 최고점
+      // 모든 게임의 평균 점수와 최고점, 최고점수 기록자
       const { data: scoresData, error: scoresError } = await supabase
         .from('game_results')
-        .select('score')
+        .select(`
+          score,
+          game_number,
+          members!inner(name),
+          game_sessions!inner(date)
+        `)
       
       if (scoresError) throw scoresError
 
@@ -72,20 +81,47 @@ export const statisticsService = {
       
       if (membersError) throw membersError
 
+      // 총 게임 일자 계산 (중복 제거된 게임 세션 날짜)
+      const { data: gameDaysData, error: gameDaysError } = await supabase
+        .from('game_sessions')
+        .select('date')
+      
+      if (gameDaysError) throw gameDaysError
+
       const totalGames = totalGamesData?.length || 0
+      const totalGameDays = gameDaysData?.length || 0
       const scores = scoresData?.map(d => d.score) || []
       const averageScore = scores.length > 0 ? 
         Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 10) / 10 : 0
-      const highestScore = scores.length > 0 ? Math.max(...scores) : 0
+      
+      // 최고점수와 해당 회원, 날짜, 게임번호 찾기
+      let highestScore = 0
+      let highestScoreMemberName = ''
+      let highestScoreDate = ''
+      let highestScoreGameNumber = 0
+      
+      if (scoresData && scoresData.length > 0) {
+        const maxScoreRecord = scoresData.reduce((max, current) => 
+          current.score > max.score ? current : max
+        )
+        highestScore = maxScoreRecord.score
+        highestScoreMemberName = (maxScoreRecord.members as any)?.name || ''
+        highestScoreDate = (maxScoreRecord.game_sessions as any)?.date || ''
+        highestScoreGameNumber = maxScoreRecord.game_number || 0
+      }
       
       const uniqueMembers = new Set(membersData?.map(d => d.member_id) || [])
       const totalMembers = uniqueMembers.size
 
       return {
         totalGames,
+        totalGameDays,
         totalMembers,
         averageScore,
         highestScore,
+        highestScoreMemberName,
+        highestScoreDate,
+        highestScoreGameNumber,
         recentGames: 0, // 사용하지 않음
         activeMembers: totalMembers // 활성 회원은 총 회원과 동일
       }
@@ -93,9 +129,13 @@ export const statisticsService = {
       console.error('Error fetching dashboard stats:', error)
       return {
         totalGames: 0,
+        totalGameDays: 0,
         totalMembers: 0,
         averageScore: 0,
         highestScore: 0,
+        highestScoreMemberName: '',
+        highestScoreDate: '',
+        highestScoreGameNumber: 0,
         recentGames: 0,
         activeMembers: 0
       }
