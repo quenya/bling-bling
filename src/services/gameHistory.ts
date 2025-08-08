@@ -4,7 +4,8 @@ import type {
   GameHistoryResult,
   HighlightsSummary,
   DateGroupedSession,
-  TeamDayStats
+  TeamDayStats,
+  RecentGamesAverage
 } from '../types/bowling'
 
 // 게임 세션과 결과를 함께 조회
@@ -426,4 +427,176 @@ const calculateTeamStats = (sessions: GameHistorySession[]): TeamDayStats[] => {
   })
   
   return teamStats.slice(0, 5) // 상위 5팀만 반환
+}
+
+// 최근 20게임 평균 계산
+export const getRecentGamesAverages = async (gameCount: number = 20): Promise<RecentGamesAverage[]> => {
+  try {
+    console.log('Fetching recent games averages...')
+    
+    // 단순하게 game_results만 가져오기
+    const { data: gameResults, error: gameError } = await supabase
+      .from('game_results')
+      .select('session_id, member_id, game_number, score, created_at')
+      .order('created_at', { ascending: false })
+      .limit(3000)
+
+    if (gameError) {
+      console.error('Error fetching game results:', gameError)
+      throw gameError
+    }
+
+    if (!gameResults || gameResults.length === 0) {
+      console.log('No game results found')
+      return []
+    }
+
+    // 세션 정보 가져오기
+    const sessionIds = [...new Set(gameResults.map(r => r.session_id))]
+    const { data: sessions, error: sessionError } = await supabase
+      .from('game_sessions')
+      .select('id, date')
+      .in('id', sessionIds)
+
+    if (sessionError) {
+      console.error('Error fetching sessions:', sessionError)
+      throw sessionError
+    }
+
+    // 회원 정보 가져오기
+    const memberIds = [...new Set(gameResults.map(r => r.member_id))]
+    const { data: members, error: memberError } = await supabase
+      .from('members')
+      .select('id, name, avatar_url')
+      .in('id', memberIds)
+
+    if (memberError) {
+      console.error('Error fetching members:', memberError)
+      throw memberError
+    }
+
+    // 데이터 매핑
+    const sessionMap = new Map(sessions?.map(s => [s.id, s]) || [])
+    const memberMap = new Map(members?.map(m => [m.id, m]) || [])
+
+    // 세션별, 회원별로 그룹화
+    const sessionMemberGames = new Map<string, {
+      member: { id: string; name: string; avatar_url?: string }
+      sessionDate: string
+      scores: number[]
+    }>()
+
+    gameResults.forEach(result => {
+      const session = sessionMap.get(result.session_id)
+      const member = memberMap.get(result.member_id)
+      
+      if (!member || !session) return
+
+      const sessionKey = `${result.session_id}-${result.member_id}`
+
+      if (!sessionMemberGames.has(sessionKey)) {
+        sessionMemberGames.set(sessionKey, {
+          member: {
+            id: member.id,
+            name: member.name,
+            avatar_url: member.avatar_url
+          },
+          sessionDate: session.date,
+          scores: []
+        })
+      }
+
+      const sessionData = sessionMemberGames.get(sessionKey)!
+      sessionData.scores.push(result.score)
+    })
+
+    // 회원별로 세션 데이터를 정리
+    const memberGames = new Map<string, {
+      member: { id: string; name: string; avatar_url?: string }
+      games: Array<{
+        sessionDate: string
+        scores: number[]
+        average: number
+      }>
+    }>()
+
+    sessionMemberGames.forEach((sessionData) => {
+      // 3게임이 모두 있는 경우만 처리
+      if (sessionData.scores.length === 3) {
+        const average = sessionData.scores.reduce((sum, score) => sum + score, 0) / sessionData.scores.length
+        const memberId = sessionData.member.id
+
+        if (!memberGames.has(memberId)) {
+          memberGames.set(memberId, {
+            member: sessionData.member,
+            games: []
+          })
+        }
+
+        const memberGameData = memberGames.get(memberId)!
+        memberGameData.games.push({
+          sessionDate: sessionData.sessionDate,
+          scores: sessionData.scores,
+          average
+        })
+      }
+    })
+
+    // 각 회원별로 최근 게임들만 선택하고 평균 계산
+    const recentAverages: RecentGamesAverage[] = []
+
+    memberGames.forEach((memberData) => {
+      // 날짜순으로 정렬 (최신순)
+      memberData.games.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
+      
+      // 최근 지정된 개수의 게임만 선택
+      const recentGames = memberData.games.slice(0, gameCount)
+      
+      if (recentGames.length === 0) return
+
+      // 최근 게임들의 평균 계산
+      const recentAverage = recentGames.reduce((sum, game) => sum + game.average, 0) / recentGames.length
+
+      // 트렌드 계산 (최근 5게임 vs 그 이전 5게임)
+      let trend: 'up' | 'down' | 'stable' | undefined
+      let trendPercentage: number | undefined
+
+      if (recentGames.length >= 10) {
+        const recent5 = recentGames.slice(0, 5)
+        const previous5 = recentGames.slice(5, 10)
+        
+        const recent5Avg = recent5.reduce((sum, game) => sum + game.average, 0) / recent5.length
+        const previous5Avg = previous5.reduce((sum, game) => sum + game.average, 0) / previous5.length
+        
+        const difference = recent5Avg - previous5Avg
+        const percentageChange = (difference / previous5Avg) * 100
+
+        if (Math.abs(percentageChange) < 2) {
+          trend = 'stable'
+        } else if (difference > 0) {
+          trend = 'up'
+        } else {
+          trend = 'down'
+        }
+        
+        trendPercentage = Math.abs(percentageChange)
+      }
+
+      recentAverages.push({
+        member: memberData.member,
+        recentAverage: Math.round(recentAverage * 100) / 100, // 소수점 2자리
+        totalGames: memberData.games.length,
+        recentGames: recentGames.length,
+        trend,
+        trendPercentage: trendPercentage ? Math.round(trendPercentage * 100) / 100 : undefined,
+        lastSessionDate: recentGames[0]?.sessionDate
+      })
+    })
+
+    console.log(`Found ${recentAverages.length} members with recent games`)
+    return recentAverages
+  } catch (error) {
+    console.error('Error fetching recent games averages:', error)
+    throw error
+  }
 }

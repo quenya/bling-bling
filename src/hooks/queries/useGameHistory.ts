@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { getGameHistory, generateHighlightsSummary, getDateGroupedGameHistory } from '../../services/gameHistory'
-import type { GameHistorySession, HighlightsSummary, DateGroupedSession } from '../../types/bowling'
+import { getGameHistory, generateHighlightsSummary, getDateGroupedGameHistory, getRecentGamesAverages } from '../../services/gameHistory'
+import type { GameHistorySession, HighlightsSummary, DateGroupedSession, RecentGamesAverage } from '../../types/bowling'
 
 // 게임 히스토리 조회
 export const useGameHistory = (options?: {
@@ -39,6 +39,16 @@ export const useDateGroupedGameHistory = (options?: {
   return useQuery<DateGroupedSession[], Error>({
     queryKey: ['dateGroupedGameHistory', options],
     queryFn: () => getDateGroupedGameHistory(options),
+    staleTime: 5 * 60 * 1000, // 5분
+    gcTime: 10 * 60 * 1000, // 10분
+  })
+}
+
+// 최근 N게임 평균 조회
+export const useRecentGamesAverages = (gameCount: number = 20) => {
+  return useQuery<RecentGamesAverage[], Error>({
+    queryKey: ['recentGamesAverages', gameCount],
+    queryFn: () => getRecentGamesAverages(gameCount),
     staleTime: 5 * 60 * 1000, // 5분
     gcTime: 10 * 60 * 1000, // 10분
   })

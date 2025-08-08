@@ -420,6 +420,20 @@ export interface TeamDayStats {
   rank: number
 }
 
+export interface RecentGamesAverage {
+  member: {
+    id: string
+    name: string
+    avatar_url?: string
+  }
+  recentAverage: number
+  totalGames: number
+  recentGames: number
+  trend?: 'up' | 'down' | 'stable'
+  trendPercentage?: number
+  lastSessionDate?: string
+}
+
 export interface HighlightsSummary {
   recentHighlights: SessionHighlight[]
   monthlyChampions: Array<{

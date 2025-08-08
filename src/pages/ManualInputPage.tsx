@@ -7,7 +7,8 @@ import {
   Calendar,
   MapPin,
   Users,
-  Target
+  Target,
+  Wand2
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input' 
@@ -22,6 +23,7 @@ import { useCreateBulkGameResults } from '@/hooks/queries/useGameResults'
 import { getGameResultsBySession } from '@/services/gameResults'
 import { toast } from 'react-hot-toast'
 import type { GameResultInsert } from '@/types/database'
+import GameInputWizard from '@/components/forms/GameInputWizard'
 
 interface GameData {
   date: string
@@ -32,6 +34,13 @@ interface GameData {
     game2: number
     game3: number
   }[]
+}
+
+interface Participant {
+  id: string
+  name: string
+  average: number
+  lastSessionDate?: string
 }
 
 // 가장 가까운 수요일 찾기 함수 (오늘이 수요일이면 오늘, 아니면 다음 수요일)
@@ -52,6 +61,8 @@ const getNextWednesday = () => {
 }
 
 const ManualInputPage = () => {
+  const [inputMode, setInputMode] = useState<'wizard' | 'manual'>('wizard')
+  
   const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<GameData>({
     defaultValues: {
       date: getNextWednesday(),
@@ -74,6 +85,20 @@ const ManualInputPage = () => {
   const createMember = useCreateMember()
   const createSession = useCreateGameSession()
   const createGameResults = useCreateBulkGameResults()
+
+  const handleParticipantsConfirmed = (participants: Participant[]) => {
+    // 참여자 정보를 폼에 설정
+    const membersData = participants.map(participant => ({
+      name: participant.name,
+      game1: 0,
+      game2: 0,
+      game3: 0
+    }))
+    
+    replace(membersData)
+    setInputMode('manual')
+    toast.success(`${participants.length}명의 참여자가 설정되었습니다!`)
+  }
 
   const onSubmit = async (data: GameData) => {
     // 이미 제출 중이면 무시
@@ -217,13 +242,31 @@ const ManualInputPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">점수 입력</h1>
-        <p className="text-gray-600 mt-1">
-          볼링 게임 점수를 직접 입력하여 기록을 남기세요
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">게임 입력</h1>
+          <p className="text-gray-600 mt-1">
+            볼링 게임 점수를 직접 입력하여 기록을 남기세요
+          </p>
+        </div>
+        
+        {inputMode === 'manual' && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setInputMode('wizard')}
+            className="flex items-center gap-2"
+          >
+            <Wand2 className="w-4 h-4" />
+            게임 입력 도우미
+          </Button>
+        )}
       </div>
 
+      {inputMode === 'wizard' ? (
+        <GameInputWizard onParticipantsConfirmed={handleParticipantsConfirmed} />
+      ) : (
+        <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* 게임 기본 정보 */}
         <Card>
@@ -481,6 +524,8 @@ const ManualInputPage = () => {
           </div>
         </CardBody>
       </Card>
+        </>
+      )}
     </div>
   )
 }

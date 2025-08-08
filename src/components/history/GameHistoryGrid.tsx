@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react'
 import { 
-  Filter, 
   Search, 
   SortAsc, 
   SortDesc, 
@@ -10,19 +9,18 @@ import {
   Grid,
   List,
   BarChart3,
-  Zap
+  Target
 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Card, CardHeader, CardBody } from '../ui/Card'
 import GameHistoryCard from './GameHistoryCard'
-import GameHistoryFilter from './GameHistoryFilter'
 import GameHistoryStats from './GameHistoryStats'
 import GameHistoryHighlights from './GameHistoryHighlights'
 import DateGroupedGameHistory from './DateGroupedGameHistory'
+import RecentGamesAverage from './RecentGamesAverage'
 import type { 
   GameHistorySession, 
-  GameHistoryFilter as FilterType, 
   GameHistoryStats as StatsType,
   HighlightsSummary,
   SessionHighlight
@@ -37,7 +35,7 @@ interface GameHistoryGridProps {
   showHighlights?: boolean
 }
 
-type ViewMode = 'grid' | 'list' | 'stats' | 'highlights' | 'dateGrouped'
+type ViewMode = 'grid' | 'list' | 'stats' | 'highlights' | 'dateGrouped' | 'recentAverage'
 type SortField = 'date' | 'average' | 'participants'
 type SortOrder = 'asc' | 'desc'
 
@@ -49,13 +47,11 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
   highlights,
   showHighlights = true
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('dateGrouped')
+  const [viewMode, setViewMode] = useState<ViewMode>('recentAverage')
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
-  const [showFilter, setShowFilter] = useState(false)
-  const [filter, setFilter] = useState<FilterType>({})
 
   // Filter and sort sessions
   const filteredAndSortedSessions = useMemo(() => {
@@ -70,33 +66,6 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
             result.member.name.toLowerCase().includes(searchLower)
           )
         if (!matchesSearch) return false
-      }
-
-      // Date range filter
-      if (filter.dateRange) {
-        const sessionDate = new Date(session.date)
-        if (filter.dateRange.from && sessionDate < new Date(filter.dateRange.from)) return false
-        if (filter.dateRange.to && sessionDate > new Date(filter.dateRange.to)) return false
-      }
-
-      // Session type filter
-      if (filter.sessionType && filter.sessionType.length > 0) {
-        if (!filter.sessionType.includes(session.sessionType)) return false
-      }
-
-      // Score range filter
-      if (filter.minScore || filter.maxScore) {
-        const sessionAverage = session.results.reduce((sum, r) => sum + r.average, 0) / session.results.length
-        if (filter.minScore && sessionAverage < filter.minScore) return false
-        if (filter.maxScore && sessionAverage > filter.maxScore) return false
-      }
-
-      // Members filter
-      if (filter.members && filter.members.length > 0) {
-        const hasMatchingMember = session.results.some(result => 
-          filter.members!.includes(result.member.id)
-        )
-        if (!hasMatchingMember) return false
       }
 
       return true
@@ -133,7 +102,7 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
     })
 
     return filtered
-  }, [sessions, searchTerm, sortField, sortOrder, filter])
+  }, [sessions, searchTerm, sortField, sortOrder])
 
   // Calculate stats for filtered sessions
   const stats: StatsType = useMemo(() => {
@@ -431,50 +400,54 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
   }
 
   const renderViewModeButtons = () => (
-    <div className="flex gap-1">
+    <div className="flex gap-1 flex-wrap">
       <Button
         variant={viewMode === 'grid' ? 'primary' : 'secondary'}
         size="sm"
         onClick={() => setViewMode('grid')}
-        className="px-3"
+        className="px-3 flex items-center gap-1"
       >
         <Grid className="w-4 h-4" />
+        <span>전체</span>
+      </Button>
+      <Button
+        variant={viewMode === 'recentAverage' ? 'primary' : 'secondary'}
+        size="sm"
+        onClick={() => setViewMode('recentAverage')}
+        className="px-3 flex items-center gap-1"
+        title="최근 20게임 평균"
+      >
+        <Target className="w-4 h-4" />
+        <span>최근 평균</span>
       </Button>
       <Button
         variant={viewMode === 'list' ? 'primary' : 'secondary'}
         size="sm"
         onClick={() => setViewMode('list')}
-        className="px-3"
+        className="px-3 flex items-center gap-1"
       >
         <List className="w-4 h-4" />
+        <span className="hidden sm:inline">목록</span>
       </Button>
       <Button
         variant={viewMode === 'dateGrouped' ? 'primary' : 'secondary'}
         size="sm"
         onClick={() => setViewMode('dateGrouped')}
-        className="px-3"
+        className="px-3 flex items-center gap-1"
         title="날짜별 그룹"
       >
         <Calendar className="w-4 h-4" />
+        <span className="hidden sm:inline">날짜별</span>
       </Button>
       <Button
         variant={viewMode === 'stats' ? 'primary' : 'secondary'}
         size="sm"
         onClick={() => setViewMode('stats')}
-        className="px-3"
+        className="px-3 flex items-center gap-1"
       >
         <BarChart3 className="w-4 h-4" />
+        <span className="hidden sm:inline">통계</span>
       </Button>
-      {showHighlights && (
-        <Button
-          variant={viewMode === 'highlights' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setViewMode('highlights')}
-          className="px-3"
-        >
-          <Zap className="w-4 h-4" />
-        </Button>
-      )}
     </div>
   )
 
@@ -530,50 +503,43 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
         <CardBody className="space-y-4">
           {/* Top Row: Search and View Mode */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="세션명, 장소, 회원명으로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            {viewMode !== 'recentAverage' && (
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="세션명, 장소, 회원명으로 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
+            )}
+            <div className="flex items-center gap-3 ml-auto">
               {renderViewModeButtons()}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowFilter(!showFilter)}
-                className={`flex items-center gap-2 ${showFilter ? 'bg-blue-50 text-blue-600' : ''}`}
-              >
-                <Filter className="w-4 h-4" />
-                <span className="hidden sm:inline">필터</span>
-              </Button>
             </div>
           </div>
 
           {/* Second Row: Sort and Stats */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">정렬:</span>
-              {renderSortButtons()}
+          {viewMode !== 'recentAverage' && viewMode !== 'stats' && (
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">정렬:</span>
+                {renderSortButtons()}
+              </div>
+              <div className="text-sm text-gray-600">
+                총 {filteredAndSortedSessions.length}개 세션
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              총 {filteredAndSortedSessions.length}개 세션
-            </div>
-          </div>
+          )}
 
-          {/* Filter Panel */}
-          {showFilter && (
-            <div className="pt-4 border-t border-gray-200">
-              <GameHistoryFilter
-                filter={filter}
-                onFilterChange={setFilter}
-                onReset={() => setFilter({})}
-              />
+          {/* Stats for other modes */}
+          {(viewMode === 'recentAverage' || viewMode === 'stats') && (
+            <div className="flex justify-end">
+              <div className="text-sm text-gray-600">
+                총 {filteredAndSortedSessions.length}개 세션
+              </div>
             </div>
           )}
         </CardBody>
@@ -602,6 +568,8 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
           dateGroups={dateGroupedSessions}
           loading={loading}
         />
+      ) : viewMode === 'recentAverage' ? (
+        <RecentGamesAverage gameCount={20} />
       ) : (
         (() => {
           // 날짜별로 그룹화
@@ -682,7 +650,7 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
               게임 히스토리가 없습니다
             </h3>
             <p className="text-gray-600">
-              필터를 조정하거나 새로운 게임을 추가해보세요.
+              새로운 게임을 추가해보세요.
             </p>
           </CardBody>
         </Card>
