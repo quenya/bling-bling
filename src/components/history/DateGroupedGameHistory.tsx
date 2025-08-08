@@ -17,6 +17,8 @@ import { Card, CardBody, CardHeader } from '../ui/Card'
 import { useDateGroupedGameHistory } from '../../hooks/queries/useGameHistory'
 import type { DateGroupedSession } from '../../types/bowling'
 
+type GameType = 'all' | 'mini' | 'large'
+
 interface DateGroupedGameHistoryProps {
   dateGroups?: DateGroupedSession[]
   loading?: boolean
@@ -32,10 +34,60 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
     isLoading: fetchLoading 
   } = useDateGroupedGameHistory({ limit: 1000 })
 
-  const dateGroups = propDateGroups || fetchedDateGroups
+  const allDateGroups = propDateGroups || fetchedDateGroups
   const loading = propLoading !== undefined ? propLoading : fetchLoading
 
   const [expandedDates, setExpandedDates] = React.useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = React.useState<GameType>('all')
+
+  // 탭에 따른 데이터 필터링
+  const dateGroups = React.useMemo(() => {
+    if (activeTab === 'all') {
+      return allDateGroups
+    }
+    
+    return allDateGroups.map(dateGroup => {
+      const filteredSessions = dateGroup.sessions.filter(session => {
+        const sessionName = session.sessionName?.toLowerCase() || ''
+        if (activeTab === 'mini') {
+          return sessionName.includes('미니게임')
+        } else if (activeTab === 'large') {
+          return sessionName.includes('라지게임')
+        }
+        return true
+      })
+      
+      if (filteredSessions.length === 0) {
+        return null
+      }
+      
+      // 필터링된 세션들로 통계 재계산
+      const allResults = filteredSessions.flatMap(session => session.results)
+      const totalAverage = allResults.length > 0 
+        ? allResults.reduce((sum, result) => sum + result.average, 0) / allResults.length 
+        : 0
+      
+      const champion = allResults.reduce((best, current) => 
+        current.average > best.average ? current : best
+      , { member: { id: '', name: '' }, average: 0 })
+      
+      return {
+        ...dateGroup,
+        sessions: filteredSessions,
+        dateStats: {
+          ...dateGroup.dateStats,
+          totalSessions: filteredSessions.length,
+          totalParticipants: new Set(allResults.map(r => r.member.id)).size,
+          averageScore: totalAverage,
+          champion: {
+            id: champion.member.id,
+            name: champion.member.name,
+            average: champion.average
+          }
+        }
+      }
+    }).filter(Boolean) as DateGroupedSession[]
+  }, [allDateGroups, activeTab])
 
   const toggleDateExpansion = (date: string) => {
     const newExpanded = new Set(expandedDates)
@@ -79,8 +131,63 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      {dateGroups.map((dateGroup) => {
+    <div className="space-y-6">
+      {/* 탭 네비게이션 */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'all'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            전체
+            <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
+              {allDateGroups.length}일 ({allDateGroups.reduce((sum, group) => sum + group.sessions.length, 0)}게임)
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('mini')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'mini'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            미니게임
+            <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
+              {allDateGroups.filter(group => 
+                group.sessions.some(s => s.sessionName?.includes('미니게임'))
+              ).length}일 ({allDateGroups.reduce((sum, group) => 
+                sum + group.sessions.filter(s => s.sessionName?.includes('미니게임')).length, 0
+              )}게임)
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('large')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'large'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            라지게임
+            <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
+              {allDateGroups.filter(group => 
+                group.sessions.some(s => s.sessionName?.includes('라지게임'))
+              ).length}일 ({allDateGroups.reduce((sum, group) => 
+                sum + group.sessions.filter(s => s.sessionName?.includes('라지게임')).length, 0
+              )}게임)
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      {/* 게임 히스토리 내용 */}
+      <div className="space-y-4">
+        {dateGroups.map((dateGroup) => {
         const isExpanded = expandedDates.has(dateGroup.date)
         const formattedDate = format(new Date(dateGroup.date), 'yyyy년 M월 d일 (EEEE)', { locale: ko })
 
@@ -389,6 +496,7 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
           </Card>
         )
       })}
+      </div>
     </div>
   )
 }
