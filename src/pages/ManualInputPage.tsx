@@ -100,6 +100,167 @@ const ManualInputPage = () => {
     toast.success(`${participants.length}명의 참여자가 설정되었습니다!`)
   }
 
+  const handleGameResultsSubmit = async (gameData: {
+    date: string
+    startLaneNumber: number
+    teams: Array<{
+      teamId: string
+      members: Array<{
+        memberId: string
+        name: string
+        game1: number
+        game2: number
+        game3: number
+        handicap: number
+        useHandicap: boolean
+      }>
+    }>
+  }) => {
+    // 마지막 안전장치: 이미 제출 중이면 무시
+    if (isSubmitting) {
+      console.log('이미 제출 중입니다.')
+      return
+    }
+    
+    setIsSubmitting(true)
+    
+    // 안전장치: 최대 15초 후 강제로 로딩 해제
+    const timeoutId = setTimeout(() => {
+      setIsSubmitting(false)
+      toast.error('요청 시간이 초과되었습니다. 다시 시도해주세요.')
+    }, 15000)
+
+    try {
+      // 1. 새로운 회원들 먼저 생성
+      const memberMap = new Map<string, string>() // name -> id
+      
+      for (const team of gameData.teams) {
+        for (const member of team.members) {
+          if (!member.name.trim()) continue
+          
+          // '동수'는 가상 회원이므로 특별 처리
+          if (member.name === '동수') {
+            // 동수용 임시 ID 생성 (팀별로 고유하게)
+            const dongsuId = `dongsu-${team.teamId}-${Date.now()}`
+            memberMap.set(`${member.name}-${team.teamId}`, dongsuId)
+            
+            // 동수는 실제 회원으로 생성하지 않고, 임시 회원으로 처리
+            // 필요시 동수 전용 회원 레코드를 만들거나 별도 처리 가능
+            continue
+          }
+          
+          // 기존 회원인지 확인
+          const isExistingMember = memberNames.includes(member.name)
+          if (isExistingMember) {
+            // 기존 회원의 ID를 찾기 위해 전체 회원 목록을 조회
+            const allMembers = await getMembers()
+            const existingMember = allMembers?.find(m => m.name === member.name)
+            if (existingMember) {
+              memberMap.set(member.name, existingMember.id)
+            }
+          } else {
+            // 새 회원 생성
+            const newMember = await createMember.mutateAsync({
+              name: member.name.trim(),
+              email: `${member.name.trim().toLowerCase()}@bowling.club`
+            })
+            memberMap.set(member.name, newMember.id)
+          }
+        }
+      }
+
+      // 2. 각 팀별로 게임 세션 생성
+      const gameResults: GameResultInsert[] = []
+      
+      for (let teamIndex = 0; teamIndex < gameData.teams.length; teamIndex++) {
+        const team = gameData.teams[teamIndex]
+        const laneNumber = gameData.startLaneNumber + teamIndex
+        
+        // 세션 생성/확인
+        let session
+        try {
+          const existingSession = await findSessionByDateAndLane(gameData.date, laneNumber)
+          
+          if (existingSession) {
+            session = existingSession
+          } else {
+            session = await createSession.mutateAsync({
+              session_name: `${gameData.date.replace(/-/g, '.')} 레인${laneNumber}번`,
+              date: gameData.date,
+              location: '라인볼링장',
+              lane_number: laneNumber,
+              total_participants: team.members.filter(m => m.name.trim()).length
+            })
+          }
+        } catch (error) {
+          console.error('세션 생성/확인 오류:', error)
+          throw new Error(`팀 ${teamIndex + 1} 세션 처리 중 오류가 발생했습니다.`)
+        }
+
+        // 기존 게임 결과 확인
+        const existingResults = await getGameResultsBySession(session.id)
+        
+        // 팀 멤버별 게임 결과 생성
+        for (const member of team.members) {
+          if (!member.name.trim()) continue
+          
+          let memberId: string | undefined
+          
+          // 동수 처리
+          if (member.name === '동수') {
+            memberId = memberMap.get(`${member.name}-${team.teamId}`)
+            // 동수의 경우 실제 게임 결과는 저장하지 않거나 별도 처리
+            // 현재는 스킵하도록 구현 (필요시 수정 가능)
+            console.log(`동수 점수 기록 스킵: 팀 ${teamIndex + 1}`)
+            continue
+          } else {
+            memberId = memberMap.get(member.name)
+          }
+          
+          if (!memberId) continue
+          
+          // 각 게임별로 결과 생성 (중복 체크)
+          [1, 2, 3].forEach(gameNumber => {
+            const baseScore = member[`game${gameNumber}` as keyof typeof member] as number
+            // 게임 결과 저장 시에는 핸디를 적용하지 않은 원본 점수를 저장
+            if (baseScore > 0) {
+              // 중복 확인: 같은 세션, 같은 멤버, 같은 게임 번호
+              const isDuplicate = existingResults?.some(result => 
+                result.member_id === memberId && result.game_number === gameNumber
+              )
+              
+              if (!isDuplicate) {
+                gameResults.push({
+                  session_id: session.id,
+                  member_id: memberId,
+                  game_number: gameNumber as 1 | 2 | 3,
+                  score: baseScore // 핸디를 적용하지 않은 원본 점수 저장
+                })
+              }
+            }
+          })
+        }
+      }
+      
+      if (gameResults.length > 0) {
+        await createGameResults.mutateAsync(gameResults)
+        toast.success(`게임 데이터가 성공적으로 저장되었습니다! (${gameResults.length}개 결과)`)
+      } else {
+        toast('저장할 새로운 게임 결과가 없습니다.', { icon: 'ℹ️' })
+      }
+      
+      // 성공적으로 완료된 후 위저드를 다시 참여자 선택 단계로 초기화
+      setInputMode('wizard')
+      
+    } catch (error) {
+      console.error('저장 실패:', error)
+      toast.error(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.')
+    } finally {
+      clearTimeout(timeoutId)
+      setIsSubmitting(false)
+    }
+  }
+
   const onSubmit = async (data: GameData) => {
     // 이미 제출 중이면 무시
     if (isSubmitting) {
@@ -264,7 +425,10 @@ const ManualInputPage = () => {
       </div>
 
       {inputMode === 'wizard' ? (
-        <GameInputWizard onParticipantsConfirmed={handleParticipantsConfirmed} />
+        <GameInputWizard 
+          onParticipantsConfirmed={handleParticipantsConfirmed}
+          onGameResultsSubmit={handleGameResultsSubmit}
+        />
       ) : (
         <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -300,16 +464,16 @@ const ManualInputPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="w-4 h-4 inline mr-1" />
-                  레인 번호
+                  시작 레인 번호
                 </label>
                 <Input
                   type="number"
                   min="1"
-                  max="99"
+                  max="17"
                   {...register('laneNumber', { 
-                    required: '레인 번호를 입력해주세요',
+                    required: '시작 레인 번호를 입력해주세요',
                     min: { value: 1, message: '1 이상의 번호를 입력해주세요' },
-                    max: { value: 99, message: '99 이하의 번호를 입력해주세요' }
+                    max: { value: 17, message: '17 이하의 번호를 입력해주세요' }
                   })}
                   className={errors.laneNumber ? 'border-red-500' : ''}
                   placeholder="예: 13"
@@ -322,13 +486,13 @@ const ManualInputPage = () => {
           </CardBody>
         </Card>
 
-        {/* 회원별 점수 입력 */}
+        {/* 팀별 점수 입력 */}
         <Card allowOverflow>
           <CardHeader>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center">
                 <Users className="w-5 h-5 mr-2" />
-                회원별 점수
+                팀별 점수
               </h2>
               <Button 
                 type="button"

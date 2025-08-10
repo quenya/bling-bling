@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
-import { Trophy, Users, ArrowLeft, ArrowRight, Target, Plus, Minus } from 'lucide-react'
+import { Input } from '@/components/ui/Input'
+import { Combobox } from '@/components/ui/Combobox'
+import { Trophy, Users, ArrowLeft, ArrowRight, Target, Plus, Minus, Calendar, MapPin, Save } from 'lucide-react'
 import { getRecentGamesAverages } from '@/services/gameHistory'
 import type { RecentGamesAverage } from '@/types/bowling'
+import { WednesdayPicker } from '@/components/ui/WednesdayPicker'
 
 interface Participant {
   id: string
@@ -16,10 +19,29 @@ interface Team {
   id: string
   name: string
   members: Participant[]
+  laneNumber?: number
+}
+
+interface TeamGameResult {
+  teamId: string
+  members: {
+    memberId: string
+    name: string
+    game1: number
+    game2: number
+    game3: number
+    handicap: number
+    useHandicap: boolean
+  }[]
 }
 
 interface GameInputWizardProps {
-  onParticipantsConfirmed: (participants: Participant[]) => void
+  onParticipantsConfirmed?: (participants: Participant[]) => void
+  onGameResultsSubmit?: (gameData: {
+    date: string
+    startLaneNumber: number
+    teams: TeamGameResult[]
+  }) => void
 }
 
 // 인원별 팀 수 계산 함수 (엑셀 파일 기반)
@@ -36,14 +58,36 @@ const getTeamCount = (participantCount: number): number => {
   return Math.ceil(participantCount / 3) // 27명 이상은 3명당 1팀
 }
 
-const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
-  const [step, setStep] = useState<'select' | 'team'>('select')
+// 가장 가까운 수요일 찾기 함수
+const getNextWednesday = () => {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0=일요일, 3=수요일
+  
+  if (dayOfWeek === 3) {
+    return today.toISOString().split('T')[0]
+  } else {
+    const daysUntilWednesday = (3 - dayOfWeek + 7) % 7
+    const nextWednesday = new Date(today)
+    nextWednesday.setDate(today.getDate() + daysUntilWednesday)
+    return nextWednesday.toISOString().split('T')[0]
+  }
+}
+
+const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameInputWizardProps) => {
+  const [step, setStep] = useState<'select' | 'team' | 'score'>('select')
   const [availableMembers, setAvailableMembers] = useState<RecentGamesAverage[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [draggedParticipant, setDraggedParticipant] = useState<Participant | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  
+  // 게임 정보 상태
+  const [gameDate, setGameDate] = useState(getNextWednesday())
+  const [startLaneNumber, setStartLaneNumber] = useState(12)
+  
+  // 팀별 점수 상태
+  const [teamScores, setTeamScores] = useState<TeamGameResult[]>([])
 
   useEffect(() => {
     loadAvailableMembers()
@@ -85,10 +129,39 @@ const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
   }
 
   const handleTeamConfirm = () => {
-    // 모든 참여자가 팀에 배정되었는지 확인
-    const allAssignedMembers = teams.flatMap(team => team.members)
-    const sortedParticipants = allAssignedMembers.sort((a, b) => b.average - a.average)
-    onParticipantsConfirmed(sortedParticipants)
+    // 팀 수를 고려하여 시작 레인 번호 검증
+    const maxStartLane = Math.max(1, 17 - teams.length + 1)
+    const validStartLane = Math.min(startLaneNumber, maxStartLane)
+    
+    // 시작 레인 번호가 조정되었다면 업데이트
+    if (validStartLane !== startLaneNumber) {
+      setStartLaneNumber(validStartLane)
+    }
+    
+    // 팀별 레인 번호 설정 (시작 레인 번호부터 순차적으로)
+    const teamsWithLanes = teams.map((team, index) => ({
+      ...team,
+      laneNumber: validStartLane + index
+    }))
+    setTeams(teamsWithLanes)
+    
+    // 팀별 점수 초기화
+    const initialScores = teamsWithLanes.map(team => ({
+      teamId: team.id,
+      members: team.members.map(member => ({
+        memberId: member.id,
+        name: member.name,
+        game1: 0,
+        game2: 0,
+        game3: 0,
+        handicap: 10,
+        useHandicap: false
+      }))
+    }))
+    setTeamScores(initialScores)
+    
+    // 점수 입력 단계로 이동
+    setStep('score')
   }
 
   // 드래그 앤 드롭 핸들러
@@ -256,10 +329,18 @@ const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
 
   // 팀 추가 함수
   const handleAddTeam = () => {
-    const newTeamId = `team-${teams.length + 1}`
+    const newTeamCount = teams.length + 1
+    
+    // 17번 레인을 넘지 않도록 체크
+    if (startLaneNumber + newTeamCount - 1 > 17) {
+      const newStartLane = Math.max(1, 17 - newTeamCount + 1)
+      setStartLaneNumber(newStartLane)
+    }
+    
+    const newTeamId = `team-${newTeamCount}`
     const newTeam: Team = {
       id: newTeamId,
-      name: `팀 ${teams.length + 1}`,
+      name: `팀 ${newTeamCount}`,
       members: []
     }
     setTeams(prev => [...prev, newTeam])
@@ -279,17 +360,224 @@ const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
   }
 
   // 팀에서 멤버 제거 함수
-  const handleRemoveMemberFromTeam = (memberId: string) => {
-    // 해당 멤버를 팀에서 찾아서 제거하고 참여자 목록으로 이동
-    const memberToRemove = teams.flatMap(team => team.members).find(member => member.id === memberId)
-    if (!memberToRemove) return
-
-    setTeams(prev => prev.map(team => ({
-      ...team,
-      members: team.members.filter(member => member.id !== memberId)
-    })))
+  // 팀에 회원 추가
+  const handleAddMemberToTeam = (teamId: string) => {
+    // 새 멤버 ID 생성
+    const newMemberId = `new-member-${Date.now()}`
+    const newMember: Participant = {
+      id: newMemberId,
+      name: '',
+      average: 0
+    }
     
-    setParticipants(prev => [...prev, memberToRemove])
+    // 팀에 멤버 추가
+    setTeams(prev => prev.map(team => 
+      team.id === teamId 
+        ? { ...team, members: [...team.members, newMember] }
+        : team
+    ))
+    
+    // 점수 배열에도 추가
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: [...teamScore.members, {
+              memberId: newMemberId,
+              name: '',
+              game1: 0,
+              game2: 0,
+              game3: 0,
+              handicap: 10,
+              useHandicap: false
+            }]
+          }
+        : teamScore
+    ))
+  }
+  
+  // 팀에서 회원 삭제
+  const handleRemoveMemberFromTeamScore = (teamId: string, memberId: string) => {
+    // 팀에서 멤버 제거
+    setTeams(prev => prev.map(team => 
+      team.id === teamId 
+        ? { ...team, members: team.members.filter(m => m.id !== memberId) }
+        : team
+    ))
+    
+    // 점수 배열에서도 제거
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: teamScore.members.filter(m => m.memberId !== memberId)
+          }
+        : teamScore
+    ))
+  }
+  
+  // 회원 이름 변경
+  const handleMemberNameChange = (teamId: string, memberId: string, newName: string) => {
+    // 팀에서 회원 이름 변경
+    setTeams(prev => prev.map(team => 
+      team.id === teamId 
+        ? { 
+            ...team, 
+            members: team.members.map(m => 
+              m.id === memberId ? { ...m, name: newName } : m
+            )
+          }
+        : team
+    ))
+    
+    // 점수 배열에서도 이름 변경
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: teamScore.members.map(m => 
+              m.memberId === memberId ? { ...m, name: newName } : m
+            )
+          }
+        : teamScore
+    ))
+  }
+  
+  // 핸디 적용 여부 변경
+  const handleUseHandicapChange = (teamId: string, memberId: string, useHandicap: boolean) => {
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: teamScore.members.map(m => 
+              m.memberId === memberId ? { ...m, useHandicap } : m
+            )
+          }
+        : teamScore
+    ))
+  }
+  
+  // 핸디 변경
+  const handleHandicapChange = (teamId: string, memberId: string, handicap: number) => {
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: teamScore.members.map(m => 
+              m.memberId === memberId ? { ...m, handicap } : m
+            )
+          }
+        : teamScore
+    ))
+  }
+  
+  // 점수 변경
+  const handleScoreChange = (teamId: string, memberId: string, gameType: 'game1' | 'game2' | 'game3', score: number) => {
+    setTeamScores(prev => prev.map(teamScore => 
+      teamScore.teamId === teamId
+        ? {
+            ...teamScore,
+            members: teamScore.members.map(m => {
+              if (m.memberId === memberId) {
+                // 동수의 경우 모든 게임 점수를 동일하게 설정
+                if (m.name === '동수') {
+                  return {
+                    ...m,
+                    game1: score,
+                    game2: score,
+                    game3: score
+                  }
+                } else {
+                  // 일반 회원의 경우 해당 게임만 변경
+                  return { ...m, [gameType]: score }
+                }
+              }
+              return m
+            })
+          }
+        : teamScore
+    ))
+  }
+  
+  // 사용 가능한 회원 목록 가져오기 (현재 팀 구성에 없는 회원들, 최근 참여 순으로 정렬)
+  const getAvailableMembersForTeam = (currentMemberName?: string) => {
+    // 현재 모든 팀에 이미 배정된 회원들의 이름 (현재 편집 중인 회원 제외)
+    // 단, '동수'는 여러 팀에 소속될 수 있으므로 제외 대상에서 제외
+    const assignedMemberNames = new Set(
+      teamScores.flatMap(team => 
+        team.members
+          .map(m => m.name.trim())
+          .filter(name => name && name !== currentMemberName && name !== '동수')
+      )
+    )
+    
+    // 배정되지 않은 회원들 필터링
+    const filteredMembers = availableMembers.filter(member => 
+      !assignedMemberNames.has(member.member.name)
+    )
+    
+    // 최근 참여 순으로 정렬 (lastSessionDate 기준)
+    const sortedMembers = filteredMembers.sort((a, b) => {
+      const dateA = a.lastSessionDate ? new Date(a.lastSessionDate).getTime() : 0
+      const dateB = b.lastSessionDate ? new Date(b.lastSessionDate).getTime() : 0
+      return dateB - dateA // 최근 날짜가 먼저 오도록
+    })
+    
+    // 회원 이름 목록 생성
+    const memberNames = sortedMembers.map(member => member.member.name)
+    
+    // '동수'를 항상 맨 앞에 추가 (가상 회원이므로 여러 팀에 소속 가능)
+    memberNames.unshift('동수')
+    
+    // 현재 편집 중인 회원 이름이 있고 목록에 없다면 추가
+    if (currentMemberName && currentMemberName.trim() && !memberNames.includes(currentMemberName)) {
+      memberNames.push(currentMemberName)
+    }
+    
+    return memberNames
+  }
+  
+  // 시작 레인 번호 변경 시 모든 팀 레인 번호 업데이트
+  const handleStartLaneNumberChange = (newStartLane: number) => {
+    // 팀 수를 고려하여 최대 시작 레인 번호 계산 (마지막 팀이 17번을 넘지 않도록)
+    const maxStartLane = Math.max(1, 17 - teams.length + 1)
+    const validStartLane = Math.min(newStartLane, maxStartLane)
+    
+    setStartLaneNumber(validStartLane)
+    
+    // 모든 팀의 레인 번호를 시작 레인 번호부터 순차적으로 업데이트
+    setTeams(prev => prev.map((team, index) => ({
+      ...team,
+      laneNumber: validStartLane + index
+    })))
+  }
+
+  // 개별 팀 레인 번호 변경 (17번 제한)
+  const handleLaneNumberChange = (teamId: string, newLaneNumber: number) => {
+    // 17번을 넘지 않도록 제한
+    const validLaneNumber = Math.min(Math.max(1, newLaneNumber), 17)
+    
+    setTeams(prev => prev.map(team => 
+      team.id === teamId 
+        ? { ...team, laneNumber: validLaneNumber }
+        : team
+    ))
+  }
+  
+  // 게임 결과 저장
+  const handleSaveResults = () => {
+    if (onGameResultsSubmit) {
+      onGameResultsSubmit({
+        date: gameDate,
+        startLaneNumber,
+        teams: teamScores
+      })
+    }
+  }
+  
+  // 이전 단계로 돌아가기
+  const handleBackToTeam = () => {
+    setStep('team')
   }
 
   if (loading) {
@@ -564,7 +852,7 @@ const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
                             onClick={() => {
                               // 드래그가 아닌 경우에만 클릭 처리
                               if (!isDragging) {
-                                handleRemoveMemberFromTeam(member.id)
+                                handleRemoveMemberFromTeamScore(team.id, member.id)
                               }
                             }}
                             className="flex items-center justify-between p-2 bg-green-50 rounded cursor-pointer hover:bg-red-100 transition-colors group"
@@ -611,6 +899,283 @@ const GameInputWizard = ({ onParticipantsConfirmed }: GameInputWizardProps) => {
             disabled={unassignedParticipants.length > 0}
           >
             팀 확정하기
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 점수 입력 단계
+  if (step === 'score') {
+    return (
+      <div className="space-y-6">
+        {/* 게임 정보 폼 */}
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              게임 정보
+            </h2>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  게임 날짜 (수요일만 선택 가능)
+                </label>
+                <WednesdayPicker
+                  value={gameDate}
+                  onChange={setGameDate}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <MapPin className="w-4 h-4 inline mr-1" />
+                  시작 레인 번호
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={Math.max(1, 17 - teams.length + 1)}
+                  value={startLaneNumber}
+                  onChange={(e) => handleStartLaneNumberChange(Number(e.target.value))}
+                  placeholder="예: 13"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {teams.length}팀 기준 최대 {Math.max(1, 17 - teams.length + 1)}번까지 (마지막 팀: {startLaneNumber + teams.length - 1}번)
+                </p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* 팀별 점수 */}
+        <Card allowOverflow>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                팀별 점수
+              </h2>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="space-y-6">
+              {teams.map((team, teamIndex) => (
+                <div key={team.id} className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <h3 className="font-medium text-gray-900">
+                        {team.name}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          레인:
+                        </label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="17"
+                          value={team.laneNumber || startLaneNumber + teamIndex}
+                          onChange={(e) => handleLaneNumberChange(team.id, Number(e.target.value))}
+                          className="w-20"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => handleAddMemberToTeam(team.id)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      회원 추가
+                    </Button>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">회원명</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">핸디 적용</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">핸디</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">1게임</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">2게임</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">3게임</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">평균</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">총점</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-700">작업</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teamScores.find(ts => ts.teamId === team.id)?.members.map((member) => {
+                          // 원본 점수 계산
+                          const originalTotal = member.game1 + member.game2 + member.game3
+                          const originalAverage = originalTotal > 0 ? (originalTotal / 3).toFixed(1) : '0.0'
+                          
+                          // 핸디가 적용된 점수 계산 (핸디 적용 체크박스가 활성화된 경우에만)
+                          const game1WithHandicap = member.useHandicap ? member.game1 + member.handicap : member.game1
+                          const game2WithHandicap = member.useHandicap ? member.game2 + member.handicap : member.game2
+                          const game3WithHandicap = member.useHandicap ? member.game3 + member.handicap : member.game3
+                          const totalWithHandicap = game1WithHandicap + game2WithHandicap + game3WithHandicap
+                          const averageWithHandicap = totalWithHandicap > 0 ? (totalWithHandicap / 3).toFixed(1) : '0.0'
+                          
+                          return (
+                            <tr key={member.memberId} className={`border-b border-gray-100 ${member.name === '동수' ? 'bg-yellow-50' : ''}`}>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <Combobox
+                                    options={getAvailableMembersForTeam(member.name)}
+                                    value={member.name}
+                                    onChange={(value) => handleMemberNameChange(team.id, member.memberId, value)}
+                                    placeholder="회원 선택 또는 이름 입력"
+                                    className="w-full"
+                                  />
+                                  {member.name === '동수' && (
+                                    <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full">
+                                      가상
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={member.useHandicap}
+                                  onChange={(e) => handleUseHandicapChange(team.id, member.memberId, e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="50"
+                                  value={member.handicap}
+                                  onChange={(e) => handleHandicapChange(team.id, member.memberId, Number(e.target.value))}
+                                  className="w-20 text-center"
+                                  disabled={!member.useHandicap}
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col items-center">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="300"
+                                    value={member.game1}
+                                    onChange={(e) => handleScoreChange(team.id, member.memberId, 'game1', Number(e.target.value))}
+                                    className="w-20 text-center"
+                                    placeholder={member.name === '동수' ? '모든 게임 동일' : ''}
+                                  />
+                                  {member.useHandicap && member.game1 > 0 && (
+                                    <span className="text-xs text-gray-500 mt-1">
+                                      ({member.game1 + member.handicap})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col items-center">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="300"
+                                    value={member.game2}
+                                    onChange={(e) => handleScoreChange(team.id, member.memberId, 'game2', Number(e.target.value))}
+                                    className="w-20 text-center"
+                                    placeholder={member.name === '동수' ? '자동 동기화' : ''}
+                                  />
+                                  {member.useHandicap && member.game2 > 0 && (
+                                    <span className="text-xs text-gray-500 mt-1">
+                                      ({member.game2 + member.handicap})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col items-center">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="300"
+                                    value={member.game3}
+                                    onChange={(e) => handleScoreChange(team.id, member.memberId, 'game3', Number(e.target.value))}
+                                    className="w-20 text-center"
+                                    placeholder={member.name === '동수' ? '자동 동기화' : ''}
+                                  />
+                                  {member.useHandicap && member.game3 > 0 && (
+                                    <span className="text-xs text-gray-500 mt-1">
+                                      ({member.game3 + member.handicap})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-medium">
+                                <div className="flex flex-col">
+                                  <span>{originalAverage}</span>
+                                  {member.useHandicap && originalTotal > 0 && (
+                                    <span className="text-xs text-gray-500">
+                                      ({averageWithHandicap})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-medium text-blue-600">
+                                <div className="flex flex-col">
+                                  <span>{originalTotal}</span>
+                                  {member.useHandicap && originalTotal > 0 && (
+                                    <span className="text-xs text-gray-500">
+                                      ({totalWithHandicap})
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {team.members.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    onClick={() => handleRemoveMemberFromTeamScore(team.id, member.memberId)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* 버튼들 */}
+        <div className="flex justify-between">
+          <Button
+            onClick={handleBackToTeam}
+            variant="outline"
+            className="px-8"
+            size="lg"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            팀 구성으로 돌아가기
+          </Button>
+          <Button
+            onClick={handleSaveResults}
+            className="px-8"
+            size="lg"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            게임 결과 저장
           </Button>
         </div>
       </div>
