@@ -49,6 +49,14 @@ export interface FunStatistics {
     score: number
     sessionDate: string
   }>
+  synergyBest?: {
+    member1Id: string
+    member1Name: string
+    member2Id: string
+    member2Name: string
+    synergyScore: number
+    gamesPlayed: number
+  }[]
 }
 
 export const statisticsService = {
@@ -154,10 +162,34 @@ export const statisticsService = {
 
   // Get fun statistics
   async getFunStatistics(): Promise<FunStatistics> {
-    const response = await supabase
-      .rpc('get_fun_statistics')
-    
-    return handleSupabaseResponse(response)
+    try {
+      const response = await supabase
+        .rpc('get_fun_statistics')
+      
+      const funStats = handleSupabaseResponse(response)
+      
+      // 시너지 통계가 없으면 직접 계산
+      if (!funStats?.synergyBest) {
+        const synergyStats = await this.getSynergyStatistics()
+        return {
+          ...funStats,
+          synergyBest: synergyStats
+        }
+      }
+      
+      return funStats
+    } catch (error) {
+      console.error('Error fetching fun statistics:', error)
+      // RPC 함수가 없으면 시너지 통계만 계산해서 반환
+      const synergyStats = await this.getSynergyStatistics()
+      return {
+        luckyDayOfWeek: { day: '수요일', averageScore: 0 },
+        comebackKing: { memberId: '', memberName: '', improvement: 0, sessionDate: '' },
+        consistencyChampion: { memberId: '', memberName: '', standardDeviation: 0 },
+        almostPerfect: [],
+        synergyBest: synergyStats
+      }
+    }
   },
 
   // Get score distribution
@@ -776,6 +808,256 @@ export const statisticsService = {
         soClose: [],
         stats: { perfectCount: 0, almostCount: 0, closeCount: 0, totalHighScores: 0 }
       }
+    }
+  },
+
+  // 시너지 통계 계산 - 같은 세션에서 함께 플레이한 회원들의 평균 점수 상승률
+  async getSynergyStatistics(): Promise<any[]> {
+    try {
+      const { data: gameResults, error } = await supabase
+        .from('game_results')
+        .select(`
+          member_id,
+          session_id,
+          score,
+          game_number,
+          members!inner(id, name)
+        `)
+
+      if (error) throw error
+
+      // 세션별 참여자 그룹핑
+      const sessionParticipants = new Map<string, Map<string, {
+        name: string,
+        scores: number[],
+        average: number
+      }>>()
+
+      gameResults?.forEach(result => {
+        const sessionId = result.session_id
+        const memberId = result.member_id
+        const member = Array.isArray(result.members) ? result.members[0] : result.members
+
+        if (!sessionParticipants.has(sessionId)) {
+          sessionParticipants.set(sessionId, new Map())
+        }
+
+        const sessionData = sessionParticipants.get(sessionId)!
+        if (!sessionData.has(memberId)) {
+          sessionData.set(memberId, {
+            name: member?.name || '알 수 없음',
+            scores: [],
+            average: 0
+          })
+        }
+
+        sessionData.get(memberId)!.scores.push(result.score)
+      })
+
+      // 각 세션에서 3게임을 완료한 참여자들만 필터링하고 평균 계산
+      sessionParticipants.forEach((participants, sessionId) => {
+        participants.forEach((data, memberId) => {
+          if (data.scores.length === 3) {
+            data.average = data.scores.reduce((sum, score) => sum + score, 0) / 3
+          } else {
+            participants.delete(memberId) // 3게임 미완료자 제거
+          }
+        })
+        
+        // 참여자가 2명 미만인 세션 제거
+        if (participants.size < 2) {
+          sessionParticipants.delete(sessionId)
+        }
+      })
+
+      // 회원 쌍별 시너지 계산
+      const synergyPairs = new Map<string, {
+        member1Id: string,
+        member1Name: string,
+        member2Id: string,
+        member2Name: string,
+        sessionScores: Array<{sessionId: string, member1Avg: number, member2Avg: number}>,
+        gamesPlayed: number,
+        synergyScore: number
+      }>()
+
+      sessionParticipants.forEach((participants, sessionId) => {
+        const participantList = Array.from(participants.entries())
+        
+        // 모든 회원 쌍 조합 생성
+        for (let i = 0; i < participantList.length; i++) {
+          for (let j = i + 1; j < participantList.length; j++) {
+            const [member1Id, member1Data] = participantList[i]
+            const [member2Id, member2Data] = participantList[j]
+            
+            // 쌍 키 생성 (알파벳순 정렬로 중복 방지)
+            const pairKey = [member1Id, member2Id].sort().join('-')
+            
+            if (!synergyPairs.has(pairKey)) {
+              synergyPairs.set(pairKey, {
+                member1Id,
+                member1Name: member1Data.name,
+                member2Id,
+                member2Name: member2Data.name,
+                sessionScores: [],
+                gamesPlayed: 0,
+                synergyScore: 0
+              })
+            }
+
+            const pairData = synergyPairs.get(pairKey)!
+            pairData.sessionScores.push({
+              sessionId,
+              member1Avg: member1Data.average,
+              member2Avg: member2Data.average
+            })
+            pairData.gamesPlayed += 1
+          }
+        }
+      })
+
+      // 시너지 점수 계산 (함께 플레이할 때의 평균 점수)
+      const synergyResults = Array.from(synergyPairs.values())
+        .filter(pair => pair.gamesPlayed >= 3) // 최소 3회 이상 함께 플레이
+        .map(pair => {
+          // 두 회원이 함께 플레이했을 때의 평균 점수
+          const totalAverage = pair.sessionScores.reduce((sum, session) => 
+            sum + (session.member1Avg + session.member2Avg) / 2, 0) / pair.sessionScores.length
+          
+          return {
+            member1Id: pair.member1Id,
+            member1Name: pair.member1Name,
+            member2Id: pair.member2Id,
+            member2Name: pair.member2Name,
+            synergyScore: Math.round(totalAverage * 10) / 10,
+            gamesPlayed: pair.gamesPlayed
+          }
+        })
+        .sort((a, b) => b.synergyScore - a.synergyScore)
+        .slice(0, 10) // Top 10
+
+      return synergyResults
+
+    } catch (error) {
+      console.error('Error calculating synergy statistics:', error)
+      return []
+    }
+  },
+
+  // 특정 회원의 시너지 통계 조회 (단순화된 버전)
+  async getMemberSynergyStatistics(targetMemberId: string): Promise<any[]> {
+    try {
+      // 타겟 회원의 모든 게임 결과 조회
+      const { data: targetGames, error: targetError } = await supabase
+        .from('game_results')
+        .select('session_id, score')
+        .eq('member_id', targetMemberId)
+
+      if (targetError) throw targetError
+
+      // 타겟 회원이 참여한 세션들 조회
+      const targetSessionIds = [...new Set(targetGames?.map(game => game.session_id) || [])]
+
+      if (targetSessionIds.length === 0) {
+        return []
+      }
+
+      // 해당 세션들의 모든 참여자 게임 결과 조회
+      const { data: allSessionGames, error: allError } = await supabase
+        .from('game_results')
+        .select(`
+          member_id,
+          session_id,
+          score,
+          members!inner(id, name)
+        `)
+        .in('session_id', targetSessionIds)
+
+      if (allError) throw allError
+
+      // 세션별로 참여자와 점수 정리
+      const sessionData = new Map<string, Map<string, { name: string, scores: number[] }>>()
+      
+      allSessionGames?.forEach(game => {
+        const sessionId = game.session_id
+        const memberId = game.member_id
+        const member = Array.isArray(game.members) ? game.members[0] : game.members
+
+        if (!sessionData.has(sessionId)) {
+          sessionData.set(sessionId, new Map())
+        }
+
+        const sessionParticipants = sessionData.get(sessionId)!
+        if (!sessionParticipants.has(memberId)) {
+          sessionParticipants.set(memberId, {
+            name: member?.name || '알 수 없음',
+            scores: []
+          })
+        }
+
+        sessionParticipants.get(memberId)!.scores.push(game.score)
+      })
+
+      // 파트너별 시너지 계산
+      const partnerStats = new Map<string, {
+        partnerId: string,
+        partnerName: string,
+        targetScores: number[],
+        partnerScores: number[],
+        sessionCount: number
+      }>()
+
+      sessionData.forEach((participants, sessionId) => {
+        const targetData = participants.get(targetMemberId)
+        if (!targetData || targetData.scores.length === 0) return
+
+        // 타겟 회원의 세션 평균
+        const targetAvg = targetData.scores.reduce((sum, score) => sum + score, 0) / targetData.scores.length
+
+        participants.forEach((partnerData, partnerId) => {
+          if (partnerId === targetMemberId || partnerData.scores.length === 0) return
+
+          const partnerAvg = partnerData.scores.reduce((sum, score) => sum + score, 0) / partnerData.scores.length
+
+          if (!partnerStats.has(partnerId)) {
+            partnerStats.set(partnerId, {
+              partnerId,
+              partnerName: partnerData.name,
+              targetScores: [],
+              partnerScores: [],
+              sessionCount: 0
+            })
+          }
+
+          const stats = partnerStats.get(partnerId)!
+          stats.targetScores.push(targetAvg)
+          stats.partnerScores.push(partnerAvg)
+          stats.sessionCount += 1
+        })
+      })
+
+      // 결과 정리
+      const results = Array.from(partnerStats.values())
+        .filter(partner => partner.sessionCount >= 1) // 최소 1회 함께 플레이
+        .map(partner => {
+          const synergyScore = partner.targetScores.reduce((sum, score) => sum + score, 0) / partner.targetScores.length
+          const partnerScore = partner.partnerScores.reduce((sum, score) => sum + score, 0) / partner.partnerScores.length
+
+          return {
+            partnerId: partner.partnerId,
+            partnerName: partner.partnerName,
+            synergyScore: Math.round(synergyScore * 10) / 10,
+            partnerScore: Math.round(partnerScore * 10) / 10,
+            gamesPlayed: partner.sessionCount
+          }
+        })
+        .sort((a, b) => b.synergyScore - a.synergyScore)
+
+      return results
+
+    } catch (error) {
+      console.error('Error calculating member synergy statistics:', error)
+      return []
     }
   },
 
