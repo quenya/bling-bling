@@ -197,6 +197,10 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
   // Generate highlights from sessions
   const sessionHighlights: SessionHighlight[] = useMemo(() => {
     return filteredAndSortedSessions.slice(0, 5).map(session => {
+      if (session.results.length === 0) {
+        return null
+      }
+      
       const champion = session.results.reduce((prev, current) => 
         current.average > prev.average ? current : prev
       )
@@ -259,7 +263,7 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
           perfectGames: session.results.filter(r => r.scores.some(score => score === 300)).length
         }
       }
-    })
+    }).filter(Boolean) as SessionHighlight[]
   }, [filteredAndSortedSessions])
 
   // Generate date grouped sessions
@@ -352,9 +356,11 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
         ? allResults.reduce((sum, result) => sum + result.average, 0) / allResults.length 
         : 0
       
-      const champion = allResults.reduce((best, current) => 
-        current.average > best.average ? current : best
-      , { member: { id: '', name: '' }, average: 0 })
+      const champion = allResults.length > 0 
+        ? allResults.reduce((best, current) => 
+            current.average > best.average ? current : best
+          ) 
+        : { member: { id: '', name: '' }, average: 0 }
       
       const teamStats = calculateTeamStats(sessions)
       
