@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Combobox } from '@/components/ui/Combobox'
-import { Trophy, Users, ArrowLeft, ArrowRight, Target, Plus, Minus, Calendar, MapPin, Save } from 'lucide-react'
+import { Trophy, Users, ArrowLeft, ArrowRight, Target, Plus, Minus, Calendar, MapPin, Save, Search, UserPlus } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { getRecentGamesAverages } from '@/services/gameHistory'
 import type { RecentGamesAverage } from '@/types/bowling'
 import { WednesdayPicker } from '@/components/ui/WednesdayPicker'
@@ -81,6 +82,7 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
   const [loading, setLoading] = useState(true)
   const [draggedParticipant, setDraggedParticipant] = useState<Participant | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
   
   // 게임 정보 상태
   const [gameDate, setGameDate] = useState(getNextWednesday())
@@ -126,6 +128,35 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
 
   const handleParticipantRemove = (participantId: string) => {
     setParticipants(prev => prev.filter(p => p.id !== participantId))
+  }
+
+  const handleAddNewMember = (name: string) => {
+    if (!name.trim()) return
+
+    // 이미 참여 중인지 확인
+    if (participants.some(p => p.name.trim() === name.trim())) {
+      toast.error('이미 참여 중인 회원입니다.')
+      return
+    }
+
+    // 기존 회원 목록에서 찾기
+    const existingMember = availableMembers.find(
+      m => m.member.name.trim() === name.trim()
+    )
+
+    if (existingMember) {
+      handleMemberSelect(existingMember)
+    } else {
+      const newParticipant: Participant = {
+        id: `new-${Date.now()}`,
+        name: name.trim(),
+        average: 0
+      }
+      setParticipants(prev => [...prev, newParticipant])
+      toast.success(`${name} 회원이 추가되었습니다.`)
+    }
+    
+    setSearchTerm('')
   }
 
   const handleTeamConfirm = () => {
@@ -282,9 +313,15 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
   }
 
   const getAvailableMembersForSelection = () => {
-    return availableMembers.filter(member => 
-      !participants.some(p => p.id === member.member.id)
-    )
+    return availableMembers.filter(member => {
+      const isAlreadyParticipant = participants.some(p => p.id === member.member.id)
+      if (isAlreadyParticipant) return false
+      
+      if (searchTerm.trim()) {
+        return member.member.name.toLowerCase().includes(searchTerm.toLowerCase())
+      }
+      return true
+    })
   }
 
   const getTierDivisions = (participants: Participant[]) => {
@@ -606,6 +643,42 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
               <p className="text-gray-600">오늘 게임에 참여할 회원들을 선택해주세요</p>
             </CardHeader>
             <CardBody>
+              <div className="mb-6 space-y-4">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="회원 검색 또는 신규 이름 입력"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && searchTerm.trim()) {
+                          handleAddNewMember(searchTerm)
+                        }
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => handleAddNewMember(searchTerm)}
+                    disabled={!searchTerm.trim()}
+                    className="flex items-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    추가
+                  </Button>
+                </div>
+                
+                {searchTerm.trim() && getAvailableMembersForSelection().length === 0 && (
+                  <div className="text-sm text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                    <p className="text-gray-500">"{searchTerm}" 회원을 찾을 수 없습니다.</p>
+                    <p className="font-medium text-blue-600 mt-1 cursor-pointer hover:underline" onClick={() => handleAddNewMember(searchTerm)}>
+                      이 이름으로 신규 참여자 추가하기
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-3">
                 {getAvailableMembersForSelection().map((member) => (
                   <Button
