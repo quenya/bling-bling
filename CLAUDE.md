@@ -145,8 +145,8 @@ bling-bling/
 ├── scripts/           # 데이터 처리 스크립트
 │   ├── parse-all-games.js   # 게임 데이터 파싱
 │   └── import-to-supabase.js # Supabase 데이터 가져오기
-├── sheets/            # 엑셀 파일 저장소
-├── images/            # 업로드된 이미지 파일
+├── sheets/            # 로컬 전용 엑셀 파일 저장소 (Git 제외)
+├── images/            # 로컬 전용 이미지 파일 (Git 제외)
 ├── supabase/          # Supabase 설정 및 마이그레이션
 │   └── migrations/    # 데이터베이스 마이그레이션 파일
 ├── mcp-server.json    # MCP 서버 설정
@@ -240,7 +240,6 @@ bling-bling/
 - **`README.md`**: 프로젝트 개요 및 설치 가이드
 - **`DEVELOPMENT_GUIDE.md`**: 상세한 개발 표준 및 워크플로우
 - **`CONTEXT7_GUIDE.md`**: Context7 MCP 서버 활용 가이드
-- **`FUNNY_STATS_PLAN.md`**: 재미있는 통계 구현 계획
 - **`mcp-server.json`**: MCP 서버 설정
 - **`vercel.json`**: Vercel 배포 설정
 

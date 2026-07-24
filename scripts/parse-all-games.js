@@ -37,12 +37,24 @@ function getWednesdayOfWeek(year, month, weekNumber) {
 // 탭 이름에서 날짜 추출
 function extractDateFromSheetName(sheetName) {
   // 예: "2025_08월_미니게임" 또는 "2024_1월(1)_미니게임_결과"
-  const match = sheetName.match(/(\d{4})_(\d+)월(\(\d+\))?_(미니게임|라지게임)(_결과)?/);
+  const match = sheetName.match(/^(\d{4})_(\d+)월(\(\d+\))?_(미니게임|라지게임)(_결과)?$/);
   if (!match) return null;
   
   const year = parseInt(match[1]);
   const month = parseInt(match[2]);
-  const gameType = match[4]; // 게임타입은 4번째 그룹
+  if (year < 1 || month < 1 || month > 12) return null;
+
+  const weekNumberPart = match[3];
+  let gameType = match[4];
+
+  if (year === 2024 && month === 1 && weekNumberPart) {
+    const weekNum = parseInt(weekNumberPart.replace(/[()]/g, ''));
+    if (weekNum === 1) {
+      gameType = '라지게임';
+    } else if (weekNum === 2) {
+      gameType = '미니게임';
+    }
+  }
   
   // 미니게임은 둘째주 수요일, 라지게임은 넷째주 수요일
   const weekNumber = gameType === '미니게임' ? 2 : 4;
@@ -243,17 +255,13 @@ function parseGameSheet(sheet) {
 }
 
 // 모든 게임 시트 파싱
-function parseAllGameSheets() {
+function parseAllGameSheets(excelFilePath) {
   try {
-    const excelFilePath = path.join(__dirname, '../sheets/볼링에버관리_2025-08_1주차_V2.1.xlsx');
     const excelData = readExcelFileFromPath(excelFilePath);
     
     // 게임 시트들 필터링 (연도_월_게임타입 패턴)
     const gameSheets = excelData.filter(sheet => {
-      const name = sheet.sheetName;
-      // 일반 패턴: 2024_8월_미니게임 형태
-      // 특별 패턴: 2024_1월(1)_미니게임_결과 형태
-      return /\d{4}_\d+월(\(\d+\))?_(미니게임|라지게임)(_결과)?/.test(name);
+      return extractDateFromSheetName(sheet.sheetName) !== null;
     });
     
     console.log(`🎳 파싱할 게임 시트: ${gameSheets.length}개\n`);
@@ -285,7 +293,7 @@ function parseAllGameSheets() {
     
   } catch (error) {
     console.error('❌ 파싱 오류:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -329,8 +337,13 @@ function generateMarkdown(gameResults) {
 // 실행
 async function main() {
   console.log('🔍 게임 시트 파싱 시작...\n');
+
+  const defaultInputPath = path.join(__dirname, '../sheets/볼링에버관리_2025-08_1주차_V2.1.xlsx');
+  const defaultOutputPath = path.join(__dirname, '../sheets/bowling_games_parsed.md');
+  const inputPath = process.argv[2] ? path.resolve(process.argv[2]) : defaultInputPath;
+  const outputPath = process.argv[3] ? path.resolve(process.argv[3]) : defaultOutputPath;
   
-  const gameResults = parseAllGameSheets();
+  const gameResults = parseAllGameSheets(inputPath);
   
   if (gameResults.length > 0) {
     console.log(`\n✅ 총 ${gameResults.length}개 게임 파싱 완료`);
@@ -339,7 +352,7 @@ async function main() {
     const markdown = generateMarkdown(gameResults);
     
     // 파일 저장
-    const outputPath = path.join(__dirname, '../sheets/bowling_games_parsed.md');
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, markdown, 'utf8');
     
     console.log(`📝 Markdown 파일 생성 완료: ${outputPath}`);
@@ -358,8 +371,12 @@ async function main() {
     });
     
   } else {
-    console.log('❌ 파싱된 게임이 없습니다.');
+    throw new Error('파싱된 게임이 없습니다.');
   }
 }
 
-main();
+main().catch(error => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`❌ 게임 시트 파싱 실패: ${message}`);
+  process.exitCode = 1;
+});
