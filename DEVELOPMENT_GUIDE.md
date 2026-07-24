@@ -160,8 +160,8 @@ const getUserInfo = async (userId) => {
 Vercel 대시보드에서 다음 환경변수를 설정해야 합니다:
 
 ```bash
-VITE_SUPABASE_URL=https://vpaomoinssfzlyqzrdfu.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYW9tb2luc3Nmemx5cXpyZGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzOTc0OTMsImV4cCI6MjA2NTk3MzQ5M30.8GaHGvJjgmJizxTRs_LPFaL-ANxzVleuvcM6L5UcNyg
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 NODE_ENV=production
 VITE_APP_TITLE=Bling-Bling 볼링 관리 시스템
 VITE_APP_VERSION=1.0.0

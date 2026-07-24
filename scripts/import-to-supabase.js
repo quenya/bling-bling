@@ -42,12 +42,7 @@ loadEnv();
 // Supabase 클라이언트 생성
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables are required');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let supabase;
 
 // 컬럼 탐지 함수 (기존 parse-all-games.js에서 개선된 버전)
 function detectGameColumns(sheet) {
@@ -119,11 +114,13 @@ function detectGameColumns(sheet) {
 // 날짜 추출 함수
 function extractDateFromSheetName(sheetName) {
   // 예: "2025_08월_미니게임" 또는 "2024_1월(1)_미니게임_결과"
-  const match = sheetName.match(/(\d{4})_(\d+)월(\(\d+\))?_(미니게임|라지게임)(_결과)?/);
+  const match = sheetName.match(/^(\d{4})_(\d+)월(\(\d+\))?_(미니게임|라지게임)(_결과)?$/);
   if (!match) return null;
   
   const year = parseInt(match[1]);
   const month = parseInt(match[2]);
+  if (year < 1 || month < 1 || month > 12) return null;
+
   const weekNumberPart = match[3]; // (1), (2) 등
   let gameType = match[4];
   
@@ -140,6 +137,7 @@ function extractDateFromSheetName(sheetName) {
   // 미니게임은 둘째주 수요일, 라지게임은 넷째주 수요일
   const weekNumber = gameType === '미니게임' ? 2 : 4;
   const day = getWednesdayOfWeek(year, month, weekNumber);
+  if (day === null) return null;
   
   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   
@@ -401,6 +399,7 @@ async function main() {
     const args = process.argv.slice(2);
     const isDryRun = args.includes('--dry-run') || args.includes('-d');
     const isClear = args.includes('--clear') || args.includes('-c');
+    const inputPath = args.find(arg => !arg.startsWith('-'));
     
     console.log('📝 명령행 인수:', args);
     console.log('🔍 드라이런 모드:', isDryRun);
@@ -410,41 +409,13 @@ async function main() {
       console.log('🔍 === 드라이런 모드: 데이터 파싱만 확인합니다 ===\n');
     }
 
-    console.log('🌍 환경 변수 확인 중...');
-    console.log('VITE_SUPABASE_URL 설정됨:', !!supabaseUrl);
-    console.log('VITE_SUPABASE_ANON_KEY 설정됨:', !!supabaseAnonKey);
-
-    // 환경 변수 확인 (드라이런이 아닌 경우에만)
-    if (!isDryRun && (!supabaseUrl || !supabaseAnonKey)) {
-      console.error('❌ 환경 변수가 설정되지 않았습니다.');
-      console.error('프로젝트 루트에 .env 파일을 만들고 다음 내용을 추가하세요:');
-      console.error('');
-      console.error('VITE_SUPABASE_URL=your_supabase_project_url');
-      console.error('VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
-      console.error('');
-      console.error('자세한 내용은 SUPABASE_IMPORT_GUIDE.md를 참조하세요.');
-      console.error('');
-      console.error('데이터 파싱만 확인하려면 --dry-run 옵션을 사용하세요:');
-      console.error('npm run import:supabase -- --dry-run');
-      process.exit(1);
+    if (!inputPath) {
+      throw new Error(
+        'Excel 파일 경로가 필요합니다. 사용법: npm run import:supabase -- /path/to/input.xlsx'
+      );
     }
 
-    if (!isDryRun) {
-      console.log('🔗 Supabase 연결 테스트...');
-      const { data, error } = await supabase.from('members').select('count').single();
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      console.log('✅ Supabase 연결 성공!');
-      
-      // 데이터 초기화 옵션 처리
-      if (isClear) {
-        await clearDatabase();
-        console.log('✅ 데이터베이스 초기화 완료. 새로운 데이터를 삽입합니다.');
-      }
-    }
-
-    const excelPath = path.join(__dirname, '../sheets/볼링에버관리_2025-08_1주차_V2.1.xlsx');
+    const excelPath = path.resolve(process.cwd(), inputPath);
     
     if (!fs.existsSync(excelPath)) {
       throw new Error(`Excel 파일을 찾을 수 없습니다: ${excelPath}`);
@@ -454,6 +425,7 @@ async function main() {
     const workbook = XLSX.readFile(excelPath);
     
     const allGames = [];
+    const validationErrors = [];
     
     // 전체점수(순) 탭 처리
     if (workbook.SheetNames.includes('전체점수(순)')) {
@@ -477,6 +449,7 @@ async function main() {
         const dateInfo = extractDateFromSheetName(sheetName);
         if (!dateInfo) {
           console.log(`⚠️  ${sheetName}: 날짜 정보를 추출할 수 없습니다.`);
+          validationErrors.push(`${sheetName}: 날짜 정보를 추출할 수 없습니다.`);
           continue;
         }
         
@@ -485,6 +458,7 @@ async function main() {
         
         if (data.length < 2) {
           console.log(`⚠️  ${sheetName}: 데이터가 부족합니다.`);
+          validationErrors.push(`${sheetName}: 데이터가 부족합니다.`);
           continue;
         }
 
@@ -498,6 +472,7 @@ async function main() {
         const gameColumns = detectGameColumns(sheetObj);
         if (!gameColumns) {
           console.log(`⚠️  ${sheetName}: 게임 점수 컬럼을 찾을 수 없습니다.`);
+          validationErrors.push(`${sheetName}: 게임 점수 컬럼을 찾을 수 없습니다.`);
           continue;
         }
 
@@ -522,11 +497,20 @@ async function main() {
             // 이름이 유효하고 팀이 있는 경우만 처리
             if (team && nameCell && nameCell.length > 0 && !nameCell.includes('empty')) {
               // 볼링 점수 추출
-              const score1 = typeof row[game1Col] === 'number' ? row[game1Col] : null;
-              const score2 = typeof row[game2Col] === 'number' ? row[game2Col] : null;
-              const score3 = typeof row[game3Col] === 'number' ? row[game3Col] : null;
-              
-              const scores = [score1, score2, score3].filter(score => score !== null && !isNaN(score));
+              const rawScores = [row[game1Col], row[game2Col], row[game3Col]];
+              const invalidScore = rawScores.some(score =>
+                score !== null &&
+                score !== undefined &&
+                score !== '' &&
+                (!Number.isInteger(score) || score < 0 || score > 300)
+              );
+
+              if (invalidScore) {
+                validationErrors.push(`${sheetName}: ${i + 1}행에 유효하지 않은 점수가 있습니다.`);
+                continue;
+              }
+
+              const scores = rawScores.filter(score => Number.isInteger(score));
               
               if (scores.length > 0) {
                 players.push({
@@ -551,15 +535,24 @@ async function main() {
           console.log(`✅ ${sheetName}: ${players.length}명의 플레이어 데이터 준비 완료`);
         } else {
           console.log(`⚠️  ${sheetName}: 유효한 플레이어 데이터가 없습니다.`);
+          validationErrors.push(`${sheetName}: 유효한 플레이어 데이터가 없습니다.`);
         }
 
       } catch (error) {
         console.error(`❌ 시트 ${sheetName} 처리 중 오류:`, error);
-        continue;
+        validationErrors.push(`${sheetName}: 시트 처리 중 오류가 발생했습니다.`);
       }
     }
 
     console.log(`\n📋 총 ${allGames.length}개의 게임이 파싱되었습니다.`);
+
+    if (validationErrors.length > 0) {
+      throw new Error(`Excel 데이터 검증 실패:\n- ${validationErrors.join('\n- ')}`);
+    }
+
+    if (allGames.length === 0) {
+      throw new Error('삽입할 수 있는 유효한 게임 데이터를 찾지 못했습니다.');
+    }
 
     if (isDryRun) {
       console.log('\n🔍 === 드라이런 결과 요약 ===');
@@ -571,6 +564,38 @@ async function main() {
       }
       console.log('\n💡 실제 데이터를 삽입하려면 --dry-run 옵션 없이 실행하세요.');
       return;
+    }
+
+    console.log('🌍 환경 변수 확인 중...');
+    console.log('VITE_SUPABASE_URL 설정됨:', !!supabaseUrl);
+    console.log('VITE_SUPABASE_ANON_KEY 설정됨:', !!supabaseAnonKey);
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ 환경 변수가 설정되지 않았습니다.');
+      console.error('프로젝트 루트에 .env 파일을 만들고 다음 내용을 추가하세요:');
+      console.error('');
+      console.error('VITE_SUPABASE_URL=your_supabase_project_url');
+      console.error('VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
+      console.error('');
+      console.error('자세한 내용은 SUPABASE_IMPORT_GUIDE.md를 참조하세요.');
+      console.error('');
+      console.error('데이터 파싱만 확인하려면 --dry-run 옵션을 사용하세요:');
+      console.error('npm run import:dry-run -- /path/to/input.xlsx');
+      process.exit(1);
+    }
+
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    console.log('🔗 Supabase 연결 테스트...');
+    const { error } = await supabase.from('members').select('count').single();
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    console.log('✅ Supabase 연결 성공!');
+
+    if (isClear) {
+      await clearDatabase();
+      console.log('✅ 데이터베이스 초기화 완료. 새로운 데이터를 삽입합니다.');
     }
 
     console.log(`🚀 총 ${allGames.length}개의 게임을 Supabase에 삽입합니다.`);

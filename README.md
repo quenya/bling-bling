@@ -137,8 +137,18 @@ bling-bling/
 │   ├── stores/        # 상태 관리
 │   └── styles/        # 글로벌 스타일
 ├── supabase/          # Supabase 설정 및 마이그레이션
-└── .mcp.json          # MCP 서버 설정
+└── vercel.json        # Vercel 배포 설정
 ```
+
+### 로컬 데이터 도구
+
+실제 회원 데이터가 포함된 워크북과 생성 결과는 저장소에서 추적하지 않습니다.
+
+```bash
+npm run parse:games -- /absolute/path/to/input.xlsx /absolute/path/to/output.md
+```
+
+두 번째 출력 경로는 선택 사항이며, 생략하면 로컬 `sheets/` 디렉터리에 생성됩니다.
 
 ## 🗄 데이터베이스 스키마
 

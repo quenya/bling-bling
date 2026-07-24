@@ -37,24 +37,27 @@ members (회원)
 
 ## 스크립트 실행
 
-### 방법 1: 직접 실행
+가져올 Excel 파일은 저장소 밖에 보관하고, 실행 시 경로를 인자로 전달합니다.
+
+### 일반 가져오기
 ```bash
-npm run tsx scripts/import-to-supabase.js
+npm run import:supabase -- /absolute/path/to/input.xlsx
 ```
 
-### 방법 2: package.json 스크립트 추가
-package.json에 다음 스크립트 추가:
-```json
-{
-  "scripts": {
-    "import:supabase": "tsx scripts/import-to-supabase.js"
-  }
-}
+### 데이터 확인만 하기
+
+Supabase에 쓰지 않고 Excel 파싱 결과만 확인합니다.
+
+```bash
+npm run import:dry-run -- /absolute/path/to/input.xlsx
 ```
 
-그 후 실행:
+### 기존 데이터 초기화 후 가져오기
+
+이 명령은 기존 데이터를 삭제한 뒤 가져오므로 실행 전에 반드시 백업과 대상 프로젝트를 확인하세요.
+
 ```bash
-npm run import:supabase
+npm run import:clear -- /absolute/path/to/input.xlsx
 ```
 
 ## 데이터 검증

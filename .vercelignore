@@ -8,10 +8,21 @@ yarn-error.log*
 dist
 
 # Environment variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
+!.env.example
+
+# Local tool credentials
+.mcp.json
+.claude.json
+
+# Private member data and maintenance tooling
+images
+sheets
+FUNNY_STATS_PLAN.md
+scripts
+complete-bowling-data-insert.js
+reinsert-bowling-data.js
+query-members-2025-08-06.js
 
 # IDE files
 .vscode
