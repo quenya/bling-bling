@@ -4,7 +4,7 @@ created: 2026-08-09
 updated: 2026-08-09
 type: concept
 tags: [project, ocr, bowling-domain, frontend]
-sources: [raw/project-baseline.md]
+sources: [raw/project-baseline.md, raw/2026-08-09-official-sheet-decision.md]
 confidence: low
 ---
 
@@ -12,19 +12,18 @@ confidence: low
 
 ## 목적
 
-볼링 화이트보드 사진에서 회원 이름과 점수를 자동 인식해 입력 부담을 낮추는 기능이다. 문서 기준으로는 Tesseract.js와 Canvas API 기반의 계획 또는 진행 중 기능이다.
+볼링 화이트보드 사진에서 회원 이름과 점수를 자동 인식해 입력 부담을 낮추는 기능 후보였다. 2026-08-09 결정에 따라 현재는 운영 등록 경로로 사용하지 않으며, 공식 결과 Sheet를 기준 데이터로 삼는다.
 
 ## 권장 처리 흐름
 
 ```text
-사진 업로드
+사진 확보 (비공개 보관)
   → Canvas 이미지 전처리
   → Tesseract.js OCR
   → 이름·점수 후보 파싱
   → 회원 매칭 및 점수 범위 검증
-  → 사용자 검토·수정
-  → game_sessions / game_results 저장
-  → upload_history 기록
+  → 사용자 검토·수정 (현재 미진행)
+  → 별도 재검토
 ```
 
 ## 설계 원칙
@@ -36,10 +35,11 @@ confidence: low
 
 ## 현재 불확실성
 
-실제 OCR 구현 여부, 전처리 파라미터, 저장 스키마는 소스 코드와 Supabase migration을 추가 점검해야 한다. 현재 페이지는 제품 문서에 기반한 설계 지식이며 구현 완료를 의미하지 않는다.
+OCR 엔진·전처리 실험은 신뢰성과 개인정보 보호 우려로 중단했다. 공식 Sheet가 현재의 source of truth이며, OCR 자동화는 정확도·실패 패턴·비식별화·보존 정책을 포함한 별도 재검토 사항이다.
 
 ## 관련 페이지
 
 - [[bling-bling]]
 - [[bling-bling-architecture]]
 - [[bowling-data-model]]
+- [[official-sheet-as-source-of-truth]]
