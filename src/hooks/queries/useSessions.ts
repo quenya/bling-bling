@@ -1,20 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { GameSession, GameSessionInsert, GameSessionUpdate } from '@/types/database';
-import * as sessionsService from '@/services/sessions';
+import { sessionsService } from '@/services/sessions';
 
 export const SESSIONS_QUERY_KEY = 'sessions';
 
-export const useSessions = (options?: { limit?: number; offset?: number }) => {
+export const useSessions = (limit: number = 10) => {
   return useQuery({
-    queryKey: [SESSIONS_QUERY_KEY, options],
-    queryFn: () => sessionsService.getSessions(options),
+    queryKey: [SESSIONS_QUERY_KEY, limit],
+    queryFn: () => sessionsService.getSessions(),
   });
 };
 
 export const useSession = (id: string) => {
   return useQuery({
     queryKey: [SESSIONS_QUERY_KEY, id],
-    queryFn: () => sessionsService.getSession(id),
+    queryFn: () => sessionsService.getSessionById(id),
     enabled: !!id,
   });
 };
@@ -34,13 +34,8 @@ export const useRecentSessions = (limit: number = 5) => {
   });
 };
 
-export const useSessionsByMember = (memberId: string, options?: { limit?: number }) => {
-  return useQuery({
-    queryKey: [SESSIONS_QUERY_KEY, 'member', memberId, options],
-    queryFn: () => sessionsService.getSessionsByMember(memberId, options),
-    enabled: !!memberId,
-  });
-};
+// Not implemented in sessionsService - use gameResults to query by member
+// export const useSessionsByMember = (memberId: string, options?: { limit?: number }) => {...}
 
 export const useSessionsByDateRange = (startDate: string, endDate: string) => {
   return useQuery({

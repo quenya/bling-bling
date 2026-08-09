@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Achievement, MemberAchievement, MemberAchievementInsert } from '@/types/database';
-import * as achievementsService from '@/services/achievements';
+import { achievementsService } from '@/services/achievements';
 
 export const ACHIEVEMENTS_QUERY_KEY = 'achievements';
 export const MEMBER_ACHIEVEMENTS_QUERY_KEY = 'memberAchievements';
@@ -15,7 +15,7 @@ export const useAchievements = () => {
 export const useAchievement = (id: string) => {
   return useQuery({
     queryKey: [ACHIEVEMENTS_QUERY_KEY, id],
-    queryFn: () => achievementsService.getAchievement(id),
+    queryFn: () => achievementsService.getAchievementById(id),
     enabled: !!id,
   });
 };
@@ -35,10 +35,10 @@ export const useRecentAchievements = (limit: number = 10) => {
   });
 };
 
-export const useAchievementLeaderboard = (achievementId: string) => {
+export const useAchievementLeaderboard = (achievementId?: string) => {
   return useQuery({
     queryKey: [MEMBER_ACHIEVEMENTS_QUERY_KEY, 'leaderboard', achievementId],
-    queryFn: () => achievementsService.getAchievementLeaderboard(achievementId),
+    queryFn: () => achievementsService.getAchievementLeaderboard(),
     enabled: !!achievementId,
   });
 };
@@ -47,7 +47,7 @@ export const useCheckEligibleAchievements = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (memberId: string) => achievementsService.checkEligibleAchievements(memberId),
+    mutationFn: (memberId: string) => achievementsService.checkAndAwardAchievements(memberId),
     onSuccess: (_, memberId) => {
       // 해당 멤버의 업적 목록을 새로고침
       queryClient.invalidateQueries({ 
@@ -66,7 +66,7 @@ export const useGrantAchievement = () => {
 
   return useMutation({
     mutationFn: (memberAchievement: MemberAchievementInsert) => 
-      achievementsService.grantAchievement(memberAchievement),
+      achievementsService.awardAchievement(memberAchievement),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: [MEMBER_ACHIEVEMENTS_QUERY_KEY, variables.member_id] 
@@ -88,7 +88,7 @@ export const useRevokeAchievement = () => {
 
   return useMutation({
     mutationFn: ({ memberId, achievementId }: { memberId: string; achievementId: string }) =>
-      achievementsService.revokeAchievement(memberId, achievementId),
+      achievementsService.removeAchievement(memberId, achievementId),
     onSuccess: (_, { memberId, achievementId }) => {
       queryClient.invalidateQueries({ 
         queryKey: [MEMBER_ACHIEVEMENTS_QUERY_KEY, memberId] 

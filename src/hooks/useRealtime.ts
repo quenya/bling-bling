@@ -37,15 +37,11 @@ export const useRealtime = (options: RealtimeSubscriptionOptions) => {
 
     // 채널 생성
     const channel = supabase.channel(`realtime-${table}`)
+      // @ts-ignore - Supabase types issue with postgres_changes
       .on(
-        'postgres_changes',
-        {
-          event,
-          schema: 'public',
-          table,
-          filter,
-        },
-        (payload) => {
+        'postgres_changes' as any,
+        { event: event, schema: 'public', table: table, filter: filter } as any,
+        (payload: RealtimePostgresChangesPayload<any>) => {
           console.log(`Realtime event on ${table}:`, payload);
 
           // 이벤트별 콜백 실행

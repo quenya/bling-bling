@@ -139,7 +139,7 @@ export const ScoreInputForm: React.FC<ScoreInputFormProps> = ({
             gameResults.push({
               session_id: sessionId,
               member_id: score.memberId,
-              game_number: gameIndex + 1,
+              game_number: (gameIndex + 1) as 1 | 2 | 3,
               score: Number(s),
             });
           }
@@ -161,7 +161,8 @@ export const ScoreInputForm: React.FC<ScoreInputFormProps> = ({
 
   const handleScoreChange = (memberIndex: number, gameIndex: number, value: string) => {
     const numValue = value === '' ? '' : Number(value);
-    const fieldName = `scores.${memberIndex}.game${gameIndex + 1}Score` as const;
+    const gameNum = gameIndex + 1;
+    const fieldName = `scores.${memberIndex}.game${gameNum}Score` as 'scores.0.game1Score' | 'scores.0.game2Score' | 'scores.0.game3Score' | 'scores.1.game1Score' | 'scores.1.game2Score' | 'scores.1.game3Score' | 'scores.2.game1Score' | 'scores.2.game2Score' | 'scores.2.game3Score';
     setValue(fieldName, numValue);
   };
 
