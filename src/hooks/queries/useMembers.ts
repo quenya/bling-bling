@@ -47,7 +47,7 @@ export const useMemberNames = () => {
     queryKey: [MEMBERS_QUERY_KEY, 'names'],
     queryFn: async () => {
       const members = await getMembers();
-      return members.map(member => member.name).sort((a, b) => a.localeCompare(b, 'ko', { sensitivity: 'base' }));
+      return (members || []).map(member => member.name).sort((a, b) => a.localeCompare(b, 'ko', { sensitivity: 'base' }));
     },
   });
 };

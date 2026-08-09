@@ -1155,6 +1155,44 @@ export const statisticsService = {
       console.error('Error fetching lucky lanes:', error)
       return []
     }
+  },
+
+  // ===== Aliases for hooks =====
+  // Aliases to match hook expectations
+  async getOverallStatistics(): Promise<any> {
+    return this.getDashboardStats();
+  },
+  async getMemberRankings(): Promise<any[]> {
+    const top5 = await this.getTop5Players();
+    return top5 || [];
+  },
+  async getWeeklyPatterns(): Promise<any> {
+    return this.getDayOfWeekStatistics();
+  },
+  async getGameProgression(sessionId: string): Promise<any> {
+    return this.getMemberPerformanceOverTime(sessionId);
+  },
+  async getStreakAnalysis(): Promise<any> {
+    const data = await this.getStrikeSpareStatistics();
+    return data;
+  },
+  async getCompetitiveAnalysis(member1Id: string, member2Id: string): Promise<any> {
+    return this.getHeadToHeadComparison(member1Id, member2Id);
+  },
+  async getPersonalBests(memberId: string): Promise<any> {
+    const stats = await this.getMemberStatistics(memberId);
+    return stats;
+  },
+  async getImprovementRate(memberId: string): Promise<any> {
+    const data = await this.getImprovementStatistics(memberId);
+    return data;
+  },
+  async getConsistencyAnalysis(memberId: string): Promise<any> {
+    const stats = await this.getMemberStatistics(memberId);
+    return stats;
+  },
+  async getClutchPerformance(memberId: string): Promise<any> {
+    return null; // Not implemented
   }
 }
 
