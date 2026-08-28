@@ -1,20 +1,12 @@
 import React, { useState } from 'react'
-import { format } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { 
-  ChevronDown, 
-  ChevronUp, 
   Trophy, 
   Medal, 
   Award,
   TrendingUp,
-  TrendingDown,
-  Users,
-  MapPin,
-  Calendar,
-  Target
+  TrendingDown
 } from 'lucide-react'
-import { Card, CardHeader, CardBody } from '../ui/Card'
+import { Card, CardBody } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import type { GameHistorySession } from '../../types/bowling'
 
@@ -22,14 +14,12 @@ interface GameHistoryCardProps {
   session: GameHistorySession
   isExpanded?: boolean
   onToggle?: () => void
-  showDetails?: boolean
 }
 
 const GameHistoryCard: React.FC<GameHistoryCardProps> = ({
   session,
   isExpanded = false,
-  onToggle,
-  showDetails = true
+  onToggle
 }) => {
   const [expanded, setExpanded] = useState(isExpanded)
 
@@ -41,28 +31,6 @@ const GameHistoryCard: React.FC<GameHistoryCardProps> = ({
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return format(date, 'M월 d일 (eee)', { locale: ko })
-  }
-
-  const getSessionTypeLabel = (type: string) => {
-    const labels = {
-      regular: '정기모임',
-      tournament: '토너먼트',
-      practice: '연습게임'
-    }
-    return labels[type as keyof typeof labels] || type
-  }
-
-  const getSessionTypeColor = (type: string) => {
-    const colors = {
-      regular: 'bg-blue-100 text-blue-800',
-      tournament: 'bg-red-100 text-red-800',
-      practice: 'bg-green-100 text-green-800'
-    }
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'
-  }
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -89,61 +57,16 @@ const GameHistoryCard: React.FC<GameHistoryCardProps> = ({
       className="hover:shadow-md transition-shadow duration-200 cursor-pointer"
       onClick={handleToggle}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="font-semibold text-gray-900">
-                {formatDate(session.date)}
-              </span>
-            </div>
-            <Badge className={getSessionTypeColor(session.sessionType)}>
-              {getSessionTypeLabel(session.sessionType)}
-            </Badge>
-          </div>
-          {showDetails && (
-            <button 
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleToggle()
-              }}
-            >
-              {(onToggle ? isExpanded : expanded) ? (
-                <ChevronUp className="w-4 h-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
-          {session.location && (
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              <span>{session.location}</span>
-            </div>
-          )}
-          {session.laneNumber && (
-            <div className="flex items-center gap-1">
-              <Target className="w-3 h-3" />
-              <span>{session.laneNumber}레인</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1">
-            <Users className="w-3 h-3" />
-            <span>{session.totalParticipants}명 참가</span>
-          </div>
-        </div>
-      </CardHeader>
-
       <CardBody className="pt-3">
         {/* Top 3 Quick View */}
-        <div className="space-y-2">
-          {topThree.map((result, index) => (
-            <div key={result.member.id} className="flex items-center justify-between">
+        <div className="flex items-stretch gap-3">
+          <div className="flex min-w-12 flex-col items-center justify-center rounded-md bg-blue-50 px-2 text-blue-700">
+            <span className="text-lg font-bold leading-tight">{session.laneNumber ?? '-'}</span>
+            <span className="text-xs">레인</span>
+          </div>
+          <div className="flex-1 space-y-2">
+            {topThree.map((result, index) => (
+              <div key={result.member.id} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   {getRankIcon(index + 1)}
@@ -174,10 +97,11 @@ const GameHistoryCard: React.FC<GameHistoryCardProps> = ({
               </div>
             </div>
           ))}
+          </div>
         </div>
 
         {/* Expanded Details */}
-        {(onToggle ? isExpanded : expanded) && showDetails && (
+        {(onToggle ? isExpanded : expanded) && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Session Stats */}

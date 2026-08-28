@@ -106,6 +106,12 @@ export const useCreateBulkGameResults = () => {
         queries.push({ queryKey: ['members', memberId, 'statistics'] });
       });
 
+      // 게임 히스토리/통계 화면도 저장 직후 최신 데이터로 갱신
+      queryClient.invalidateQueries({ queryKey: ['gameHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['gameHistoryHighlights'] });
+      queryClient.invalidateQueries({ queryKey: ['dateGroupedGameHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['recentGamesAverages'] });
+
       // 한 번에 모든 쿼리 무효화
       queryClient.invalidateQueries({ 
         predicate: (query) => 

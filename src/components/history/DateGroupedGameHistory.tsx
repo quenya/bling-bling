@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
-  MapPin,
   Hash,
   TrendingUp
 } from 'lucide-react'
@@ -266,15 +265,6 @@ export const DateGroupedGameHistory: React.FC<DateGroupedGameHistoryProps> = ({
                                   <Hash className="w-3 h-3" />
                                   레인 {session.laneNumber || sessionIndex + 1}
                                 </div>
-                                {session.sessionName && (
-                                  <span className="text-gray-700 font-medium">{session.sessionName}</span>
-                                )}
-                                {session.location && (
-                                  <span className="flex items-center gap-1 text-gray-500 text-sm">
-                                    <MapPin className="w-3 h-3" />
-                                    {session.location}
-                                  </span>
-                                )}
                               </div>
                               <div className="text-right">
                                 <div className="text-sm text-gray-500">레인 평균</div>
