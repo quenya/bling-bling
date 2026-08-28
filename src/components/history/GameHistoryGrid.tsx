@@ -636,7 +636,6 @@ const GameHistoryGrid: React.FC<GameHistoryGridProps> = ({
                         session={session}
                         isExpanded={expandedCard === session.id}
                         onToggle={() => handleCardToggle(session.id)}
-                        showDetails={viewMode === 'list' || expandedCard === session.id}
                       />
                     ))}
                   </div>
