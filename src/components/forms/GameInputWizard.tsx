@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast'
 import { getRecentGamesAverages } from '@/services/gameHistory'
 import type { RecentGamesAverage } from '@/types/bowling'
 import { WednesdayPicker } from '@/components/ui/WednesdayPicker'
+import { getLatestAllowedWednesday, isAllowedGameDate } from '@/utils/gameDate'
 
 interface Participant {
   id: string
@@ -59,21 +60,6 @@ const getTeamCount = (participantCount: number): number => {
   return Math.ceil(participantCount / 3) // 27명 이상은 3명당 1팀
 }
 
-// 가장 가까운 수요일 찾기 함수
-const getNextWednesday = () => {
-  const today = new Date()
-  const dayOfWeek = today.getDay() // 0=일요일, 3=수요일
-  
-  if (dayOfWeek === 3) {
-    return today.toISOString().split('T')[0]
-  } else {
-    const daysUntilWednesday = (3 - dayOfWeek + 7) % 7
-    const nextWednesday = new Date(today)
-    nextWednesday.setDate(today.getDate() + daysUntilWednesday)
-    return nextWednesday.toISOString().split('T')[0]
-  }
-}
-
 const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameInputWizardProps) => {
   const [step, setStep] = useState<'select' | 'team' | 'score'>('select')
   const [availableMembers, setAvailableMembers] = useState<RecentGamesAverage[]>([])
@@ -85,7 +71,7 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
   const [searchTerm, setSearchTerm] = useState('')
   
   // 게임 정보 상태
-  const [gameDate, setGameDate] = useState(getNextWednesday())
+  const [gameDate, setGameDate] = useState(getLatestAllowedWednesday())
   const [startLaneNumber, setStartLaneNumber] = useState(12)
   
   // 팀별 점수 상태
@@ -603,6 +589,10 @@ const GameInputWizard = ({ onParticipantsConfirmed, onGameResultsSubmit }: GameI
   
   // 게임 결과 저장
   const handleSaveResults = () => {
+    if (!isAllowedGameDate(gameDate)) {
+      toast.error('게임 날짜는 오늘까지의 수요일만 선택할 수 있습니다.')
+      return
+    }
     if (onGameResultsSubmit) {
       onGameResultsSubmit({
         date: gameDate,

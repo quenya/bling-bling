@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getLatestAllowedWednesday } from '@/utils/gameDate'
 
 interface WednesdayPickerProps {
   value: string
@@ -16,7 +17,10 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
   className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const latest = new Date(`${getLatestAllowedWednesday()}T00:00:00`)
+    return new Date(latest.getFullYear(), latest.getMonth(), 1)
+  })
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -83,11 +87,11 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
   // 월 변경
   const changeMonth = (direction: 'prev' | 'next') => {
     setCurrentMonth(prev => {
-      const newDate = new Date(prev)
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1)
-      } else {
-        newDate.setMonth(prev.getMonth() + 1)
+      const newDate = new Date(prev.getFullYear(), prev.getMonth() + (direction === 'prev' ? -1 : 1), 1)
+      if (direction === 'next') {
+        const latestMonth = new Date(`${getLatestAllowedWednesday()}T00:00:00`)
+        if (prev.getFullYear() > latestMonth.getFullYear() ||
+          (prev.getFullYear() === latestMonth.getFullYear() && prev.getMonth() >= latestMonth.getMonth())) return prev
       }
       return newDate
     })
@@ -175,6 +179,7 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
           <div className="flex items-center justify-between p-3 border-b border-gray-200">
             <button
               type="button"
+              aria-label="이전 달"
               onClick={() => changeMonth('prev')}
               className="p-1 hover:bg-gray-100 rounded"
             >
@@ -185,6 +190,10 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
             </h3>
             <button
               type="button"
+              aria-label="다음 달"
+              disabled={currentMonth.getFullYear() > new Date(`${getLatestAllowedWednesday()}T00:00:00`).getFullYear() ||
+                (currentMonth.getFullYear() === new Date(`${getLatestAllowedWednesday()}T00:00:00`).getFullYear() &&
+                  currentMonth.getMonth() >= new Date(`${getLatestAllowedWednesday()}T00:00:00`).getMonth())}
               onClick={() => changeMonth('next')}
               className="p-1 hover:bg-gray-100 rounded"
             >
@@ -199,11 +208,13 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
                 const dateString = formatDate(wednesday)
                 const isSelected = value === dateString
                 const isPast = wednesday < today
+                const isFuture = dateString > getLatestAllowedWednesday()
                 
                 return (
                   <button
                     key={dateString}
                     type="button"
+                    disabled={isFuture}
                     onMouseDown={(e) => {
                       e.preventDefault()
                       onChange(dateString)
@@ -211,11 +222,12 @@ export const WednesdayPicker: React.FC<WednesdayPickerProps> = ({
                     }}
                     className={`w-full px-3 py-2 text-left rounded hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${
                       isSelected ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
-                    } ${isPast ? 'text-gray-600' : ''}`}
+                    } ${isPast ? 'text-gray-600' : ''} ${isFuture ? 'text-gray-300 cursor-not-allowed' : ''}`}
                   >
                     <span>
                       {wednesday.getDate()}일 (수요일)
                       {isPast && ' - 지난 날짜'}
+                      {isFuture && ' - 선택 불가'}
                     </span>
                     {isSelected && <div className="w-2 h-2 bg-blue-600 rounded-full" />}
                   </button>

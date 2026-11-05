@@ -24,6 +24,7 @@ import { getGameResultsBySession } from '@/services/gameResults'
 import { toast } from 'react-hot-toast'
 import type { GameResultInsert } from '@/types/database'
 import GameInputWizard from '@/components/forms/GameInputWizard'
+import { getLatestAllowedWednesday, isAllowedGameDate } from '@/utils/gameDate'
 
 interface GameData {
   date: string
@@ -43,29 +44,12 @@ interface Participant {
   lastSessionDate?: string
 }
 
-// 가장 가까운 수요일 찾기 함수 (오늘이 수요일이면 오늘, 아니면 다음 수요일)
-const getNextWednesday = () => {
-  const today = new Date()
-  const dayOfWeek = today.getDay() // 0=일요일, 3=수요일
-  
-  if (dayOfWeek === 3) {
-    // 오늘이 수요일이면 오늘 날짜 반환
-    return today.toISOString().split('T')[0]
-  } else {
-    // 다음 수요일 찾기
-    const daysUntilWednesday = (3 - dayOfWeek + 7) % 7
-    const nextWednesday = new Date(today)
-    nextWednesday.setDate(today.getDate() + daysUntilWednesday)
-    return nextWednesday.toISOString().split('T')[0]
-  }
-}
-
 const ManualInputPage = () => {
   const [inputMode, setInputMode] = useState<'wizard' | 'manual'>('wizard')
   
   const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<GameData>({
     defaultValues: {
-      date: getNextWednesday(),
+      date: getLatestAllowedWednesday(),
       laneNumber: 12,
       members: [
         { name: '', game1: 0, game2: 0, game3: 0 }
@@ -116,6 +100,10 @@ const ManualInputPage = () => {
       }>
     }>
   }) => {
+    if (!isAllowedGameDate(gameData.date)) {
+      toast.error('게임 날짜는 오늘까지의 수요일만 선택할 수 있습니다.')
+      return
+    }
     // 마지막 안전장치: 이미 제출 중이면 무시
     if (isSubmitting) {
       console.log('이미 제출 중입니다.')
@@ -262,6 +250,10 @@ const ManualInputPage = () => {
   }
 
   const onSubmit = async (data: GameData) => {
+    if (!isAllowedGameDate(data.date)) {
+      toast.error('게임 날짜는 오늘까지의 수요일만 선택할 수 있습니다.')
+      return
+    }
     // 이미 제출 중이면 무시
     if (isSubmitting) {
       console.log('이미 제출 중입니다.')
